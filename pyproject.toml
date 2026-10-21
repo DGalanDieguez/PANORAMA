@@ -1,0 +1,101 @@
+# =============================================================================
+# Build system
+# =============================================================================
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+
+# =============================================================================
+# Project metadata
+# =============================================================================
+[project]
+name = "panorama"
+version = "1.0.0"
+description = "PANORAMA (Package for the ANalysis Of RApidly rotating MAssive stars)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "LicenseRef-MIT-Citation"  # MIT License with an additional citation clause (see LICENSE)
+license-files = ["LICENSE"]
+
+authors = [
+    { name = "D. Galán-Diéguez", email = "dgalandieguez.astro@gmail.com" },
+]
+maintainers = [
+    { name = "D. Galán-Diéguez", email = "dgalandieguez.astro@gmail.com" },
+]
+
+keywords = [
+    "astronomy",
+    "astrophysics",
+    "binary stars",              # obs: ephemerides and orbital phases
+    "continuum normalization",   # spec
+    "line broadening",           # units: thermal and microturbulent velocities
+    "massive stars",
+    "OB stars",
+    "observation planning",      # obs, BinarAlt
+    "radial velocity",           # obs.bary_corr, units
+    "signal-to-noise ratio",     # obs
+    "spectroscopy",
+    "stellar rotation",
+    "vsini",                     # units: centrifugal gravity correction
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+dependencies = [
+    "astroplan>=0.10",
+    "astropy>=6.0",
+    "astroquery>=0.4",
+    "matplotlib>=3.6",
+    "numpy>=1.23",
+    "pandas>=1.3",
+    "scipy>=1.9",
+    "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+demos = [
+    "jupyterlab>=4.0",  # Demo notebooks (Demos/<module>_demo.ipynb)
+    "PyQt6>=6.0",       # Interactive Matplotlib windows (Qt backend)
+]
+
+[project.urls]
+Homepage = "https://dgalandieguez.com/PANORAMA"
+Repository = "https://github.com/DGalanDieguez/PANORAMA"
+Issues = "https://github.com/DGalanDieguez/PANORAMA/issues"
+
+
+# =============================================================================
+# Setuptools
+# =============================================================================
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["panorama", "panorama.*"]
+exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+panorama = [
+    "support/**/*.dat",
+    "support/**/*.html",
+    "support/**/*.npy",
+    "support/**/*.pdf",
+    "support/**/*.txt",
+]
