@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use PANORAMA in your research, please cite it as below."
 title: "PANORAMA: Package for the ANalysis Of RApidly rotating MAssive stars"
-version: 1.0.0
+version: 1.0.1
 license-url: "https://github.com/DGalanDieguez/PANORAMA/blob/main/LICENSE"
 repository-code: "https://github.com/DGalanDieguez/PANORAMA"
 url: "https://dgalandieguez.com/PANORAMA"

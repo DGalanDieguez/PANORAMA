@@ -17,13 +17,16 @@ It brings together, in a single and consistent environment, the tools needed alo
 - [4. Modules](#4-modules)
 - [5. Repository Structure](#5-repository-structure)
 - [6. Demos](#6-demos)
-- [7. Contributing and Code Conventions](#7-contributing-and-code-conventions)
-- [8. How to Cite](#8-how-to-cite)
-- [9. License](#9-license)
-  - [9.1. Summary](#91-summary)
-  - [9.2. Citation Requirement](#92-citation-requirement)
-- [10. Authors and Contact](#10-authors-and-contact)
-- [11. Project Links](#11-project-links)
+- [7. Versions](#7-versions)
+  - [7.1. Version v1.](#71-version-v1)
+- [8. Contributing and Code Conventions](#8-contributing-and-code-conventions)
+- [9. How to Cite](#9-how-to-cite)
+- [10. License](#10-license)
+  - [10.1. Summary](#101-summary)
+  - [10.2. Citation Requirement](#102-citation-requirement)
+- [11. AI Usage Disclaimer](#11-ai-usage-disclaimer)
+- [12. Authors and Contact](#12-authors-and-contact)
+- [13. Project Links](#13-project-links)
 
 ---
 <br>
@@ -98,7 +101,7 @@ Each module has its own README in [`READMEs/`](READMEs), all with the same struc
 | `pyiacob_broad` | Python implementation of the IACOB-BROAD method: projected rotational velocity (*v* sin *i*) and macroturbulence from combined Fourier-transform and goodness-of-fit analyses | 🚧 | — |
 | `rot` | Physics of rapidly rotating stars: Roche-model geometry and gravity darkening | 🚧 | — |
 | `sii` | Joint fitting of stellar intensity interferometric and spectroscopic data | 🚧 | — |
-| `spec` | Reading, visualization, cleaning and continuum normalization of observed spectra | ✅ | [spec_README.md](READMEs/spec_README.md) |
+| `spec` | Reading, writing, visualization, cleaning and continuum normalization of observed spectra | ✅ | [spec_README.md](READMEs/spec_README.md) |
 | `specblur` | Signal-to-noise (SNR) estimation and degradation of spectra to a target resolution, SNR, rotation and macroturbulence | 🚧 | — |
 | `tex` | LaTeX manuscript and bibliography checks, VizieR/SIMBAD catalog queries and A&A-ready figures | ✅ | [tex_README.md](READMEs/tex_README.md) |
 | `units` | Physical and astronomical unit conversions and derived stellar parameters | ✅ | [units_README.md](READMEs/units_README.md) |
@@ -165,7 +168,38 @@ Some notebooks need extra resources, such as internet access; the examples that 
 ---
 <br>
 
-## 7. Contributing and Code Conventions
+## 7. Versions
+
+| Version | Date | Title | Description |
+|---|---|---|---|
+| [`v1.0.1`](#712-v101--binaralt-weather-alarms) | 2026-10-22 | BinarAlt Weather Alarms | Weather-limit alarms in BinarAlt, bug fixes and updated user guide. |
+| [`v1.0.0`](#711-v100--initial-release) | 2026-10-24 | Initial Release | First public release of PANORAMA. |
+
+<br>
+
+## 7.1. Version v1.
+### 7.1.1. v1.0.0 — Initial Release
+First public release of PANORAMA, a Python package for the spectroscopic analysis of massive stars.
+
+Included modules:
+* `obs`: observation planning and target visibility tools.
+* `spec`: spectrum reading, writing, cleaning, normalization and line analysis.
+* `tex`: manuscript, bibliography, catalog (VizieR, SIMBAD) and A&A figure utilities.
+* `units`: unit and parameter validation helpers.
+
+Each module includes its README and an executed Jupyter demo notebook.
+
+
+### 7.1.2. v1.0.1 — BinarAlt Weather Alarms
+Changes in the `obs` module (`binaralt`):
+* New alarms that warn the user when the weather limits are exceeded.
+* Several bug fixes.
+* Updated user guide ([`READMEs/BinarAlt_UserGuide.pdf`](READMEs/BinarAlt_UserGuide.pdf)).
+
+---
+<br>
+
+## 8. Contributing and Code Conventions
 
 New modules and changes to existing code must follow the PANORAMA development conventions, described in detail in [`READMEs/conventions_README.md`](READMEs/conventions_README.md): how to add a module, module and function layout, imports, code style, file handling, input validation, docstrings, returned results, figures, module READMEs, demos and checks.
 
@@ -177,7 +211,7 @@ In short:
 ---
 <br>
 
-## 8. How to Cite
+## 9. How to Cite
 
 If you use PANORAMA in your research, please cite the reference publication (placeholder, to be replaced by the ADS entry once the paper is published):
 
@@ -200,28 +234,35 @@ Some modules implement methods published by other authors (e.g. IACOB-BROAD) or 
 ---
 <br>
 
-## 9. License
+## 10. License
 
-### 9.1. Summary
+### 10.1. Summary
 PANORAMA is distributed under the terms of the **MIT License with an additional citation requirement**. The full text is given in the [LICENSE](LICENSE) file; in short:
 
 * **You may** use, copy, modify, merge, publish, distribute, sublicense and sell copies of the software, free of charge.
 * **You must**:
   * keep the copyright notice and the license text in all copies or substantial portions of the software;
-  * cite the reference publication given in [Section 8](#8-how-to-cite) in any academic, scientific or technical publication, presentation or public dissemination of results obtained in whole or in part with PANORAMA.
+  * cite the reference publication given in [Section 9](#9-how-to-cite) in any academic, scientific or technical publication, presentation or public dissemination of results obtained in whole or in part with PANORAMA.
 * **No warranty:** the software is provided "as is", without warranty of any kind, and the authors are not liable for any claim or damage arising from its use.
 
 This summary is for convenience only; the [LICENSE](LICENSE) file is the legally binding text. Because of the citation clause, the license is not the standard MIT License; it is declared in `pyproject.toml` as `LicenseRef-MIT-Citation`.
 
 <br>
 
-### 9.2. Citation Requirement
-The reference publication that the [LICENSE](LICENSE) file requires to be cited is given, with its BibTeX entry, in [Section 8](#8-how-to-cite). Methods implemented from other authors' work should also be cited as indicated in the corresponding module README.
+### 10.2. Citation Requirement
+The reference publication that the [LICENSE](LICENSE) file requires to be cited is given, with its BibTeX entry, in [Section 9](#9-how-to-cite). Methods implemented from other authors' work should also be cited as indicated in the corresponding module README (see READMEs folder).
 
 ---
 <br>
 
-## 10. Authors and Contact
+## 11. AI Usage Disclaimer
+
+Artificial intelligence (AI) tools have been used during the development of PANORAMA to search for bugs in the functions and to improve the code comments and docstrings. All AI-generated suggestions have been carefully reviewed by the developers before being incorporated into the package.
+
+---
+<br>
+
+## 12. Authors and Contact
 
 * **D. Galán-Diéguez** – *Lead developer* – [dgalandieguez.astro@gmail.com](mailto:dgalandieguez.astro@gmail.com)
 * **M. Arévalo-Morales** – *Co-developer of `BinarAlt`* – [marevalo@ull.edu.es](mailto:marevalo@ull.edu.es)
@@ -229,7 +270,7 @@ The reference publication that the [LICENSE](LICENSE) file requires to be cited 
 ---
 <br>
 
-## 11. Project Links
+## 13. Project Links
 
 * **Personal website:** [dgalandieguez.com](https://dgalandieguez.com)
 * **PANORAMA website:** [dgalandieguez.com/PANORAMA](https://dgalandieguez.com/PANORAMA)

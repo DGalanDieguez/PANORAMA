@@ -150,6 +150,26 @@
     flex-shrink: 0;
   }
   .help-btn:hover { border-color: var(--muted); color: var(--ink); }
+  /* Weather alarm bell: shown next to the "?" button only while the alarm
+     is ringing, i.e. at the red level (see setWeatherAlarm() in the script).
+     It reuses .help-btn's size and shape, takes the alert level's color
+     (--alert-c, same values as .box-alert-N) and blinks; clicking it
+     silences the alarm and hides it again. */
+  .header-btns { display: flex; align-items: center; gap: 6px; }
+  .alarm-btn { --alert-c: var(--wx-yellow); }
+  .alarm-btn.alarm-lvl-2 { --alert-c: var(--wx-orange); }
+  .alarm-btn.alarm-lvl-3 { --alert-c: var(--error); }
+  .alarm-btn {
+    color: var(--alert-c);
+    border-color: var(--alert-c);
+    background: color-mix(in srgb, var(--alert-c) 16%, transparent);
+    animation: alarm-btn-blink 1s steps(1, end) infinite;
+  }
+  .alarm-btn:hover { color: var(--alert-c); border-color: var(--alert-c); }
+  @keyframes alarm-btn-blink {
+    0%   { opacity: 1; }
+    50%  { opacity: .25; }
+  }
   .help-dropdown {
     display: none;
     position: absolute;
@@ -285,7 +305,7 @@
   .weather-unavailable { color: var(--muted); font-size: 12.5px; padding: 20px 12px; text-align: center; }
   /* Applied to a value once it crosses a threshold — WEATHER's own
      humidity/wind/dust/precipitation readings (see thresholdLevel() in the
-     script), OBSERVATION TIMELINE's live Moon Dist column, and OBSERVATION
+     script), LOGBOOK's live Moon Dist column, and OBSERVATION
      PLAN's own mean Moon Dist column alike (see moonDistLevel()). Same
      "tinted box" format AND font (mono/bold) as the obs-btn states. Always
      put this class on an inline element (a <span>, like WEATHER's own .v) —
@@ -314,6 +334,41 @@
        instead of clipping/scrolling inside it. */
     min-width: 0;
   }
+  /* Box-level weather alert: while any WEATHER threshold is exceeded, the
+     WEATHER, OBSERVATION PLAN/LOGBOOK and EXPOSURE/OBSERVING TIMELINE boxes
+     take the overall (worst) alert color, in the same format as the wx-lvl-N
+     value boxes: a 1px solid border in that color, plus a background tint.
+     The tint is deliberately much weaker than the wx-lvl-N one (7% vs 16%)
+     and is mixed with the box's own --panel color rather than with
+     transparent, so a large box stays readable — only a hint of color.
+     --alert-c holds the level's color, so the border, the tint and the
+     blink below all share a single definition per level. */
+  .box.box-alert-1 { --alert-c: var(--wx-yellow); }
+  .box.box-alert-2 { --alert-c: var(--wx-orange); }
+  .box.box-alert-3 { --alert-c: var(--error); }
+  .box.box-alert-1, .box.box-alert-2, .box.box-alert-3 {
+    border-color: var(--alert-c);
+    background: color-mix(in srgb, var(--alert-c) 7%, var(--panel));
+  }
+  /* The box-head separator line and the sticky table header (which paints
+     its own opaque --panel background, see table.sched thead th) follow the
+     box's alert state too, so no untinted strip is left inside the box. */
+  .box.box-alert-1 > .box-head, .box.box-alert-2 > .box-head, .box.box-alert-3 > .box-head {
+    border-bottom-color: color-mix(in srgb, var(--alert-c) 45%, var(--line));
+  }
+  .box.box-alert-1 table.sched thead th,
+  .box.box-alert-2 table.sched thead th,
+  .box.box-alert-3 table.sched thead th {
+    background: color-mix(in srgb, var(--alert-c) 7%, var(--panel));
+  }
+  /* Red level only: the border blinks (alert color <-> the normal --line
+     color), once per second. */
+  .box.box-alert-3 { animation: alert-border-blink 1s steps(1, end) infinite; }
+  @keyframes alert-border-blink {
+    0%   { border-color: var(--alert-c); }
+    50%  { border-color: var(--line); }
+  }
+
   .box-head {
     padding: 9px 12px;
     border-bottom: 1px solid var(--line);
@@ -325,7 +380,7 @@
   .box-body { padding: 12px; }
 
   label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
-  input[type=text], input[type=number], input[type=date], select {
+  input[type=text], input[type=number], input[type=date], input[type=time], select {
     width: 100%;
     background: var(--panel-2);
     border: 1px solid var(--line);
@@ -373,10 +428,8 @@
     cursor: pointer;
   }
   button:hover { border-color: var(--muted); }
-  /* Keep the browser's focus ring for keyboard navigation (Tab), but not
-     after a plain mouse click — without :focus-visible, clicking e.g. the
-     weather refresh button or an obs-tab left a blue outline stuck on it
-     until something else was clicked. */
+  /* Keep the focus ring for keyboard navigation (Tab) but not after a mouse
+     click, which would otherwise leave it on the clicked button. */
   button:focus:not(:focus-visible) { outline: none; }
   button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   button.primary:hover { filter: brightness(1.08); }
@@ -406,7 +459,7 @@
     background: var(--panel-2);
     cursor: pointer;
   }
-  /* Same idea as OBSERVATION PLAN/TIMELINE's row-selected — see
+  /* Same idea as OBSERVATION PLAN/LOGBOOK's row-selected — see
      toggleSelectedTarget(). */
   .target-card.tc-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel-2)); }
   /* Already in the observation plan — hidden from the editable list, not
@@ -421,8 +474,8 @@
   .toggles input[type=checkbox] { margin:0; }
   .sub-fields { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--line); }
   .sub-fields .field label { font-size: 10.5px; }
-  /* Generic visibility toggle, used for the custom-observatory fields and the
-     target sub-field groups (eclipsing-binary ephemeris / exposure planning). */
+  /* Generic visibility toggle (custom-observatory fields, the periodic-object
+     and exposure sub-fields of a target card, the inactive tab of a box...). */
   .hidden { display:none; }
 
   /* Fallback only — syncTargetsBoxHeight() overrides this inline on load and
@@ -431,7 +484,7 @@
 
   /* height: fallback only — syncLogBoxHeight() overrides this inline on
      load and on every relevant change, so this box's bottom edge lines up
-     with OBSERVATION PLAN/TIMELINE's own (see its own comment). */
+     with OBSERVATION PLAN/LOGBOOK's own (see its own comment). */
   #log {
     font-family: var(--font-mono);
     font-size: 11.3px;
@@ -503,7 +556,7 @@
   table.sched td.row-drag { cursor: grab; color: var(--muted); text-align:center; width: 18px; padding-left:6px; padding-right:2px; }
   table.sched td.row-drag:active { cursor: grabbing; }
   /* A "finished" (already-observed) row's handle isn't draggable — its
-     position is locked, per the OBSERVATION TIMELINE reordering rule. */
+     position is locked, per the LOGBOOK reordering rule. */
   table.sched td.row-drag.is-locked { cursor: not-allowed; opacity: .35; }
   table.sched tr.drag-over-row { outline: 1px dashed var(--accent); outline-offset: -1px; }
   table.sched td.row-delete-cell { text-align:center; padding-left:2px; padding-right:2px; }
@@ -563,7 +616,7 @@
   }
   button.obs-btn.is-started:hover { background: color-mix(in srgb, var(--wx-orange) 26%, transparent); }
   .flag { color: var(--warn); }
-  /* OBSERVATION TIMELINE's "In Plan" indicator — green check while the
+  /* LOGBOOK's "In Plan" indicator — green check while the
      target is still part of OBSERVATION PLAN, red cross once removed from
      it (but still tracked here — see removeTargetFromPlan()). */
   .tl-inplan {
@@ -572,14 +625,15 @@
   }
   .tl-inplan.yes { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
   .tl-inplan.no { background: color-mix(in srgb, var(--error) 20%, transparent); color: var(--error); }
-  /* A target that couldn't actually be scheduled (every placement still dips
-     below its altitude limit at some point) — left at the end of the list,
-     flagged red, rather than silently dropped. */
+  /* A target that could not be scheduled (no room left in the night, only
+     visible outside the scheduling window, or every placement dips below its
+     altitude limit; see notScheduledReason) — listed at the end, in red,
+     rather than silently dropped. */
   table.sched tr.row-below-limit { color: var(--error); }
   table.sched tr.row-below-limit td { background: color-mix(in srgb, var(--error) 8%, transparent); }
 
   /* Row highlighting: clicking a target's row/bar anywhere (OBSERVATION
-     PLAN, EXPOSURE TIMELINE, OBSERVATION TIMELINE, OBSERVING TIMELINE)
+     PLAN, LOGBOOK, EXPOSURE TIMELINE, OBSERVING TIMELINE)
      highlights it there and dims every other row — see selectedTargetId. */
   table.sched tbody tr[data-id] { cursor: pointer; }
   table.sched tbody tr.row-selected td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -600,7 +654,12 @@
   <h1>🔭 BinarAlt</h1>
   <span class="sub">Graphical visibility and observation planner from the PANORAMA framework</span>
   <div class="help-menu-wrap">
-    <button class="help-btn" id="help-btn" title="Help" aria-haspopup="true" aria-expanded="false">?</button>
+    <div class="header-btns">
+      <button type="button" class="help-btn alarm-btn hidden" id="alarm-btn" title="Weather limit exceeded — click to silence the alarm" aria-label="Silence weather alarm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <button class="help-btn" id="help-btn" title="Help" aria-haspopup="true" aria-expanded="false">?</button>
+    </div>
     <div class="help-dropdown" id="help-dropdown" role="menu">
       <a href="BinarAlt_UserGuide.pdf?v=2.3.2" target="_blank" rel="noopener" role="menuitem">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>
@@ -626,7 +685,7 @@
       <div class="box-body">
         <div class="row field">
           <div>
-            <label for="inp-date">Date (MM/DD/YY)</label>
+            <label for="inp-date" title="The night that starts in the evening of this local date">Date (night starting)</label>
             <input type="date" id="inp-date">
           </div>
         </div>
@@ -668,10 +727,10 @@
           <div><label for="inp-min-alt">Minimum altitude [°]</label><input type="number" id="inp-min-alt" step="any" value="30"></div>
           <div><label for="inp-overhead">Overhead per exposure [s]</label><input type="number" id="inp-overhead" step="any" value="10"></div>
         </div>
-        <!-- Sun-altitude thresholds that define sunset/sunrise/twilight; fed
-             into Astronomy.SearchAltitude (see nightWindow()). Defaults
-             -0.833° match the standard geometric sunset/sunrise definition
-             (refraction + solar radius); -18° is astronomical twilight. -->
+        <!-- Sun-altitude thresholds (geometric altitude of the Sun's center)
+             that define sunset/sunrise and the twilights; see nightWindow().
+             -0.833° is the standard sunset/sunrise (34' of refraction plus
+             the 16' solar semidiameter); -18° is astronomical twilight. -->
         <div class="row field">
           <div><label for="inp-sunset-alt">Sunset altitude [°]</label><input type="number" id="inp-sunset-alt" step="any" value="-0.833"></div>
           <div><label for="inp-sunrise-alt">Sunrise altitude [°]</label><input type="number" id="inp-sunrise-alt" step="any" value="-0.833"></div>
@@ -721,8 +780,8 @@
     </div>
 
     <!-- Session save/load: a full snapshot (date, observatory, scheduler
-         defaults, targets) that can be handed to another browser/machine.
-         Replaces the old "Download chart (SVG)" action. -->
+         values, targets, plan and logbook) as a JSON file, to move it to
+         another browser or machine. -->
     <div class="actions">
       <button id="btn-save-session" class="ghost">Save session</button>
       <button id="btn-load-session" class="ghost">Load session</button>
@@ -746,13 +805,12 @@
     </div>
     <div class="box">
       <div id="plot-wrap">
-        <div class="empty-hint" id="empty-hint">Add targets and click «Plot targets» to see the visibility chart.</div>
+        <div class="empty-hint" id="empty-hint">Add targets and click «Plot Targets» to see the visibility chart.</div>
         <svg id="plot-svg" style="display:none;" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
     </div>
-    <!-- Exposure timeline: kept in its own box (like the Observation Plan
-         table below) instead of appended to the bottom of the main altitude
-         plot, so neither panel grows tall enough to require scrolling. -->
+    <!-- EXPOSURE TIMELINE (planned blocks) and OBSERVING TIMELINE (real
+         observations), as two tabs of one box. -->
     <div class="box" id="gantt-box" style="display:none;">
       <div class="box-head box-head-row">
         <span class="obs-tabs">
@@ -785,8 +843,8 @@
             <input type="number" id="inp-max-rows-obs" value="10" min="1" step="1" title="Max rows">
           </span>
           <!-- Undoes the last delete-one/delete-all/reorder in OBSERVATION
-               PLAN or OBSERVATION TIMELINE — see pushPlanUndoSnapshot(). -->
-          <button type="button" class="small ghost" id="btn-undo-plan" title="Undo the last observation plan/timeline change" disabled>Undo</button>
+               PLAN or LOGBOOK — see pushPlanUndoSnapshot(). -->
+          <button type="button" class="small ghost" id="btn-undo-plan" title="Undo the last observation plan/logbook change" disabled>Undo</button>
           <button type="button" class="small ghost" id="btn-delete-all-plan" title="Remove every target from the plan">Delete all</button>
         </span>
       </div>
@@ -819,7 +877,7 @@
        from the browser would always be blocked; the local server fetches
        server-side instead, where CORS does not apply. -->
   <div class="panel-weather">
-    <div class="box">
+    <div class="box" id="weather-box">
       <div class="box-head box-head-row">
         <span>WEATHER</span>
         <span class="box-head-actions">
@@ -828,8 +886,8 @@
         </span>
       </div>
       <div class="box-body">
-        <!-- Shown for OT and ORM alike, to pick which of their several
-             stations to read (see WEATHER_STATIONS / populateWeatherStationSelect()) — hidden for any other (custom) observatory, which has no known weather source at all. -->
+        <!-- Station selector for OT and ORM (see WEATHER_STATIONS); hidden
+             for every other observatory, which has no weather source. -->
         <div class="field" id="weather-station-field">
           <label for="inp-weather-station">Station</label>
           <select id="inp-weather-station"></select>
@@ -1203,26 +1261,34 @@ const OBSERVATORY_PRESETS = {
   SAAO:     { name: 'South African Astronomical Observatory (SAAO)',       lat: -32.37944444, lon: 20.81055556,   elev: 1798, tz: 'Africa/Johannesburg' },
   MAUNAKEA: { name: 'Maunakea Observatories',                              lat: 19.82666667,  lon: -155.47166667, elev: 4205, tz: 'Pacific/Honolulu' },
 };
-let rowSeq = 0; // monotonically increasing id used to key each target card (never reused, even after removals)
-let lastPlot = null; // holds the last computed state, so the download button can re-export it
+// Plot-area margins (px) shared by the visibility plot, EXPOSURE TIMELINE and
+// OBSERVING TIMELINE, so that the three time axes stay aligned: left (target
+// names / altitude labels) and right (airmass labels).
+const CHART_ML = 120, CHART_MR = 60;
+// Row layout of the two timeline charts: top margin, row height and bottom
+// margin (hour-tick axis), in px. Also used by syncGanttBoxHeight().
+const GANTT_MT = 12, GANTT_ROW_H = 24, GANTT_MB = 44;
+
+let rowSeq = 0; // Last target-card id used (ids are never reused, even after removals)
+let lastPlot = null; // Last computed state (see computeAll()), re-rendered on selection, resize, etc.
 // Per-target observation status, seeing readings and free-text comment,
-// keyed by target id. The observation-plan table is rebuilt from scratch on
-// every render() call (including the debounced re-render on window/panel
-// resize), so this state has to live outside that table or it would be
-// wiped out mid-session.
+// keyed by target id. The tables are rebuilt from scratch on every render(),
+// so this state lives outside them.
 const scheduleNotes = {};
 function newScheduleNote() {
   return {
     status: 'none', startedAt: null, finishedAt: null,
     seeingStart: null, seeingEnd: null,
-    // Continuous seeing samples taken every SEEING_SAMPLE_MS while the target
-    // is "Observing". Each entry is the numeric arcsec value parsed from
-    // lastWeatherSeeing at the moment of sampling. The mean of these samples
-    // is what formatSeeingRange() uses as the "mean during observation".
-    // No extra HTTP fetch is needed — we just read the already-cached JS
-    // variable that the normal 30s weather refresh keeps up to date.
+    // Seeing samples (numbers, as read from lastWeatherSeeing) taken every
+    // SEEING_SAMPLE_MS while the target is "Observing"; their median is the
+    // LOGBOOK's Seeing column (see formatSeeingRange()). No extra request:
+    // the sampler only reads the value the weather refresh keeps up to date.
     seeingSamples: [],
     comment: '',
+    // True while `comment` is the automatic explanation of why the target is
+    // not in the plan (see renderObservationTimelineTable()), false once the
+    // user edits it: only automatic comments are updated or cleared
+    autoComment: false,
   };
 }
 
@@ -1261,16 +1327,14 @@ function startSeeingSamplerIfNeeded() {
     seeingSamplerTimer = setTimeout(takeSeeingSample, SEEING_SAMPLE_MS);
   }
 }
-// User-chosen row order for the OBSERVATION TIMELINE table only (array of
-// target ids, as strings), or null for its default order. Purely a display
-// convenience for tracking an observing session — unlike the old
-// scheduling-affecting reorder, this never touches buildSchedule() or the
-// OBSERVATION PLAN table, which always shows the scheduler's own order and
-// cannot be reordered. Rows already marked "finished" are locked in place
-// (see the drag-handle wiring in renderObservationTimelineTable()).
+// User-chosen row order of the LOGBOOK table (array of target ids, as
+// strings), or null for its default order. A display convenience only: it
+// never affects buildSchedule() or the OBSERVATION PLAN, which always shows
+// the scheduler's own order. Rows already "finished" are locked in place
+// (see the drag handles in renderObservationTimelineTable()).
 let timelineOrder = null;
 // Targets removed from OBSERVATION PLAN via its delete button, but kept
-// visible in OBSERVATION TIMELINE (as "not in plan", pushed to the end —
+// visible in LOGBOOK (as "not in plan", pushed to the end —
 // see removeTargetFromPlan()) since a session's observing record shouldn't
 // just vanish because the target is no longer being planned for. Their
 // name/RA/Dec (no longer available from a live target-card, which gets
@@ -1279,14 +1343,14 @@ const excludedFromPlan = new Set();
 const excludedTargetInfo = {}; // id -> {name, ra_h, dec_d}
 
 // Currently highlighted target (as a string id), or null for none. Set by
-// clicking a row/bar in OBSERVATION PLAN, EXPOSURE TIMELINE, OBSERVATION
-// TIMELINE or OBSERVING TIMELINE — dims every other target's curve/bar/row
+// clicking a row/bar in OBSERVATION PLAN, LOGBOOK, EXPOSURE TIMELINE or
+// OBSERVING TIMELINE — dims every other target's curve/bar/row
 // across all of those plus the visibility plot. Clicking the same target
 // again clears it.
 let selectedTargetId = null;
 function isSelectedTarget(id) { return selectedTargetId !== null && String(id) === selectedTargetId; }
 // 'MOON' is a valid selectedTargetId (see the legend's own Moon item) but
-// the Moon never appears as a row in OBSERVATION PLAN/TIMELINE or either
+// the Moon never appears as a row in OBSERVATION PLAN/LOGBOOK or either
 // Gantt chart — those four should stay fully un-dimmed while it's selected,
 // only the visibility plot and legend react to it.
 function selectionAffectsBoxes() { return selectedTargetId !== null && selectedTargetId !== 'MOON'; }
@@ -1340,6 +1404,7 @@ function centerSelectedInBoxes() {
    DATE / JD UTILITIES
    ====================================================================== */
 const JD_UNIX_EPOCH = 2440587.5; // JD at 1970-01-01T00:00:00Z
+const J2000_JD = 2451545.0; // JD of the J2000.0 epoch, the time origin of Astronomy Engine
 
 // Julian Date -> JS Date, via the Unix-epoch JD offset above.
 function jdToDate(jd) {
@@ -1349,10 +1414,13 @@ function jdToDate(jd) {
 function dateToJd(date) {
   return date.getTime() / 86400000 + JD_UNIX_EPOCH;
 }
-// Julian Date -> Astronomy Engine's own AstroTime, which is instead keyed
-// off the J2000.0 epoch (2451545.0), not the Unix epoch used above.
+// Julian Date -> Astronomy Engine AstroTime (days since J2000.0).
 function astroTimeFromJd(jd) {
-  return Astronomy.MakeTime(jd - 2451545.0);
+  return Astronomy.MakeTime(jd - J2000_JD);
+}
+// Astronomy Engine AstroTime -> Julian Date, inverse of astroTimeFromJd().
+function astroTimeToJd(time) {
+  return time.ut + J2000_JD;
 }
 // UTC "HH:MM", used throughout in place of the locale-dependent (and
 // possibly 12-hour) default Date formatting — see updateClocks()'s own note.
@@ -1396,20 +1464,17 @@ function renderObsButton(btn, note) {
     btn.title = 'Click once the observation starts';
   }
 }
-// "start – end (mean)" seeing format for the Logbook.
-// The mean is the arithmetic mean of all seeingSamples collected during
-// the observation (one sample every 30 s from lastWeatherSeeing, no extra
-// HTTP fetch). While still Observing, the running mean is shown live from
-// the samples collected so far. Falls back to a start/end average if no
-// samples were collected (e.g. very short observation or weather offline).
-// Median seeing recorded during the observation.
-// "-" before started; "…" while observing with no samples yet;
-// running median while observing with samples; final median once finished;
-// "n/a" if weather was unavailable throughout (no samples at all).
+// LOGBOOK's Seeing column: the median of the seeing samples taken during the
+// observation (see newScheduleNote()), with the unit of the reading.
+//   "-"         before the observation starts;
+//   "…"         while observing, before the first sample;
+//   "1.23 …"    running median while observing (with the reading's unit);
+//   "1.23"      final median once finished (with the reading's unit);
+//   "n/a"       finished without any sample (weather unavailable).
 function formatSeeingRange(note) {
   if (note.status === 'none' && !note.seeingSamples?.length) return '-';
   const samples = note.seeingSamples || [];
-  // Extract unit suffix from any available seeing string (e.g. '"', ' arcsec').
+  // Unit suffix of the stored readings (e.g. '"' or ' arcsec')
   function seeingUnit(s) {
     if (!s || s === '-' || s === 'n/a') return '';
     const m = String(s).match(/^[0-9]*\.?[0-9]+(.*)/);
@@ -1427,7 +1492,7 @@ function formatSeeingRange(note) {
     const ellipsis = note.status === 'started' ? ' \u2026' : '';
     return `${median.toFixed(2)}${unit}${ellipsis}`;
   }
-  // No samples collected — weather was offline or observation too short.
+  // No samples: weather unavailable during the whole observation
   if (note.status === 'started') return '\u2026';
   return 'n/a';
 }
@@ -1438,7 +1503,7 @@ function formatTimeObservationRange(note) {
   if (!note.finishedAt) return `${fmtHMS(note.startedAt)}-…`;
   return `${fmtHMS(note.startedAt)}-${fmtHMS(note.finishedAt)}`;
 }
-// Orbital/ephemeris phase (0-1) at a given real UT Date, for a periodic
+// Phase (0-1) of the linear ephemeris at a given real UT Date, for a periodic
 // target — same convention as panorama.obs.obs_phase: phi = ((t - T0) mod P) / P,
 // with t and T0 in HJD when the epoch was given as HJD0, and in JD otherwise.
 // `ephemeris` = { period, t0, scale ('HJD' | 'JD'), ra_h, dec_d } (see computeAll()).
@@ -1448,10 +1513,9 @@ function phaseAt(date, ephemeris) {
   const e = (t - ephemeris.t0) / ephemeris.period;
   return ((e % 1) + 1) % 1;
 }
-// OBSERVATION TIMELINE's "Obs. Phase" column: the phase span actually
-// covered while the Observed button sat in "Observing" — i.e. between the
-// real Start/End Observation clicks — not the plan's static phase. '-' for
-// a non-periodic target or one not yet started.
+// LOGBOOK's "Obs. Phase" column: the phase span actually covered between
+// the real start and end clicks of the observation (not the planned block).
+// '-' for a non-periodic target or one not yet started.
 function formatObsPhaseRange(note, ephemeris) {
   if (!ephemeris || !note.startedAt) return '-';
   const startPhase = phaseAt(note.startedAt, ephemeris).toFixed(3);
@@ -1490,10 +1554,12 @@ function parseRAHours(str) {
     hours = Number(raw) / 15;
   }
   if (!Number.isFinite(hours)) throw new Error(`Unrecognized RA: "${str}"`);
+  if (hours < 0 || hours >= 24) throw new Error(`RA out of range (0-24 h, or 0-360° in degrees): "${str}"`);
   return hours;
 }
 function parseDecDeg(str) {
-  // Accepts "+38:47:01", "+38d47m01s", or a bare decimal number of degrees.
+  // Returns the Dec in degrees. Accepts "+38:47:01", "+38d47m01s",
+  // "+38 47 01" or a decimal number of degrees ("38.7836").
   let s = String(str).trim();
   const neg = s.startsWith('-');
   s = s.replace(/^[+-]/, '');
@@ -1508,10 +1574,11 @@ function parseDecDeg(str) {
     val = parseFloat(s);
   }
   if (!Number.isFinite(val)) throw new Error(`Unrecognized Dec: "${str}"`);
+  if (val > 90) throw new Error(`Dec out of range (-90° to +90°): "${str}"`);
   return neg ? -val : val;
 }
 // Sexagesimal display, inverse of parseRAHours/parseDecDeg — used by
-// OBSERVATION PLAN/TIMELINE's Coordinates column.
+// OBSERVATION PLAN/LOGBOOK's Coordinates column.
 function fmtRAHours(ra_h) {
   if (!Number.isFinite(ra_h)) return '-';
   let h = ((ra_h % 24) + 24) % 24;
@@ -1544,14 +1611,15 @@ function fmtCoords(ra_h, dec_d) {
 /* ======================================================================
    ASTRONOMY (Astronomy Engine)
    ====================================================================== */
-// Thin wrapper around Astronomy Engine's own Observer constructor, so
-// call sites read as (lat, lon, elev) instead of a bare `new` expression.
+// Observer at latitude/longitude (deg, North/East positive) and elevation (m).
 function makeObserver(lat, lon, elev) {
   return new Astronomy.Observer(lat, lon, elev);
 }
 
-// Always reuses the same "Star1" slot: only one arbitrary-coordinate star
-// needs to be defined at a time, so each target is computed one after another.
+// Altitude (deg, geometric, no refraction) of a fixed RA/Dec direction over a
+// grid of Julian Dates. Always reuses Astronomy Engine's "Star1" slot: only one
+// arbitrary-coordinate star is needed at a time, as targets are computed one
+// after another.
 function starAltitudeSeries(ra_h, dec_d, observer, timeGridJd) {
   Astronomy.DefineStar(Astronomy.Body.Star1, ra_h, dec_d, 100);
   return timeGridJd.map((jd) => {
@@ -1561,8 +1629,7 @@ function starAltitudeSeries(ra_h, dec_d, observer, timeGridJd) {
     return hor.altitude;
   });
 }
-// Same idea as starAltitudeSeries(), for the Moon itself — its own visible
-// Body, no DefineStar needed.
+// Same as starAltitudeSeries(), for the Moon (topocentric).
 function moonAltitudeSeries(observer, timeGridJd) {
   return timeGridJd.map((jd) => {
     const t = astroTimeFromJd(jd);
@@ -1663,9 +1730,11 @@ function siderealHoursAt(observer, jd) {
 }
 
 /* ======================================================================
-   SCHEDULER (same algorithm as binaralt.py: maximize the number of targets
-   observed and, among orderings that reach that maximum, maximize the
-   total mean altitude achieved)
+   SCHEDULER
+   Greedy placement of each target's exposure block around its altitude
+   peak, tried under several orderings; the best result is chosen by
+   priority first, then number of targets observed, then total mean
+   altitude (see scoreOf()).
    ====================================================================== */
 function interp(x, xs, ys) {
   // Linear interpolation of ys(x) over the sorted grid xs, with binary search.
@@ -1676,15 +1745,10 @@ function interp(x, xs, ys) {
   const t=(x-xs[lo])/(xs[hi]-xs[lo]);
   return ys[lo] + t*(ys[hi]-ys[lo]);
 }
-// Init/Mean/Max altitude actually reached over [start, end] (the target's
-// PLANNED observation block): altitude at the very start of the block, the
-// mean across it (5-sample average, interpolated from the pre-computed
-// altitude series), and its max — these are the OBSERVATION PLAN table's
-// Init/Mean/Max Alt columns, describing what the target does across its own
-// scheduled block, not its best altitude for the whole night (that value,
-// `window.peakAlt`, still exists internally — see scoreOf() — but is no
-// longer shown directly; nor is the *threshold* the scheduler required it
-// to clear, shown separately as the Min Alt column via minAltConstraint).
+// Altitude at the start of a planned block [start, end] (JD), and its mean
+// and maximum over the block (5 samples interpolated from the altitude
+// series): the OBSERVATION PLAN's Init/Mean/Max Alt columns. They describe
+// the block itself, not the target's best altitude of the night.
 function altitudeStatsInBlock(altValues, timeGridJd, start, end) {
   const n=5; let sum=0, max=-Infinity, atStart=null;
   for (let i=0;i<n;i++) {
@@ -1742,21 +1806,18 @@ function altitudeDipsBelowThreshold(altValues, timeGridJd, start, end, minAlt) {
   return false;
 }
 function placeInOrder(candidates, t0jd, t1jd, initialBusy) {
-  // Greedily places candidates (in the given order) into the free gaps left
-  // by previously placed ones (starting from initialBusy, if given — see
-  // buildSchedule()'s handling of already-observed/"pinned" targets). If a
-  // candidate doesn't fit within its own visibility window, it is retried
-  // against the whole night and flagged "compromised" (observed outside its
-  // ideal altitude window) rather than dropped outright — unless even that
-  // fallback placement would dip below the target's own altitude limit at
-  // some point, in which case it's set aside as belowThreshold instead (not
-  // placed, not occupying any busy time) rather than shown as a real,
-  // schedulable observation. Candidates that fit nowhere at all (not even
-  // the whole-night fallback) are dropped outright — but still surfaced as a
-  // belowThreshold-shaped entry too (reason 'overlap'), so OBSERVATION
-  // PLAN/TIMELINE can list them at the end alongside the altitude-limit
-  // cases instead of silently vanishing (see computeAll()'s log + failedIds
-  // handling, and getAllTrackedTargets()).
+  // Greedily places the candidates, in the given order, into the gaps left
+  // by those already placed (starting from initialBusy: the pinned,
+  // already-observed targets, see buildSchedule()).
+  //   - A candidate that does not fit within its own visibility window is
+  //     retried over the whole scheduling range and flagged "compromised"
+  //     (observed away from its altitude window).
+  //   - If even that placement dips below its altitude limit, it is not
+  //     placed (it occupies no time) and is returned in belowThreshold with
+  //     reason 'altitude'.
+  //   - A candidate that fits nowhere is dropped, and also returned in
+  //     belowThreshold (reason 'overlap'), so that OBSERVATION PLAN and
+  //     LOGBOOK list it at the end instead of losing it.
   const busy = initialBusy ? initialBusy.map((x) => [...x]) : [];
   const scheduled=[], dropped=[], belowThreshold=[];
   for (const c of candidates) {
@@ -1768,39 +1829,38 @@ function placeInOrder(candidates, t0jd, t1jd, initialBusy) {
     }
     if (!placement) {
       dropped.push(c);
-      const altStats = altitudeStatsInBlock(c.altValues, c.timeGridJd, c.window.start, c.window.end);
-      belowThreshold.push({
-        id: c.id, name: c.name, color: c.color, dash: c.dash, start: c.window.start, end: c.window.end, durationDays: c.durationDays,
-        peakAltitude: c.window.peakAlt, minAltConstraint: c.minAltitude, compromised: false, belowLimit: true, notScheduledReason: 'overlap',
-        initAlt: altStats.atStart, meanAltitude: altStats.mean, maxAltitude: altStats.max,
-        nExp: c.nExp, expTime: c.expTime, overhead: c.overhead, ra_h: c.ra_h, dec_d: c.dec_d, priority: c.priority,
-      });
+      belowThreshold.push(makePlanRow(c, c.minAltitude, c.window.start, c.window.end, c.altValues, c.timeGridJd,
+                                      { belowLimit: true, notScheduledReason: 'overlap' }));
       continue;
     }
     const [start,end] = placement;
-    const altStats = altitudeStatsInBlock(c.altValues, c.timeGridJd, start, end);
     if (compromised && altitudeDipsBelowThreshold(c.altValues, c.timeGridJd, start, end, c.minAltitude)) {
-      belowThreshold.push({
-        id: c.id, name: c.name, color: c.color, dash: c.dash, start, end, durationDays: c.durationDays,
-        peakAltitude: c.window.peakAlt, minAltConstraint: c.minAltitude, compromised: true, belowLimit: true, notScheduledReason: 'altitude',
-        initAlt: altStats.atStart, meanAltitude: altStats.mean, maxAltitude: altStats.max,
-        nExp: c.nExp, expTime: c.expTime, overhead: c.overhead, ra_h: c.ra_h, dec_d: c.dec_d, priority: c.priority,
-      });
-      continue; // not committed to `busy`: doesn't block other candidates
+      // Not added to `busy`: it does not block other candidates
+      belowThreshold.push(makePlanRow(c, c.minAltitude, start, end, c.altValues, c.timeGridJd,
+                                      { compromised: true, belowLimit: true, notScheduledReason: 'altitude' }));
+      continue;
     }
     busy.push([start,end]);
-    scheduled.push({
-      id: c.id, name: c.name, color: c.color, dash: c.dash, start, end, durationDays: c.durationDays,
-      // peakAltitude is the target's true best altitude for the whole night
-      // (kept only for scoreOf()'s internal scoring ratio); minAltConstraint
-      // is the configured visibility threshold, shown as the Min Alt column.
-      // Init/Mean/Max Alt are altStats, the block-local values.
-      peakAltitude: c.window.peakAlt, minAltConstraint: c.minAltitude, compromised,
-      initAlt: altStats.atStart, meanAltitude: altStats.mean, maxAltitude: altStats.max,
-      nExp: c.nExp, expTime: c.expTime, overhead: c.overhead, ra_h: c.ra_h, dec_d: c.dec_d, priority: c.priority,
-    });
+    scheduled.push(makePlanRow(c, c.minAltitude, start, end, c.altValues, c.timeGridJd, { compromised }));
   }
   return { scheduled, dropped, belowThreshold };
+}
+// One OBSERVATION PLAN row (scheduled or not) for the block [start, end]
+// (JD) of a target `c` with the fields id, name, color, dash, durationDays,
+// nExp, expTime, overhead, ra_h, dec_d and priority. `minAlt` is its
+// altitude limit (Min Alt column); Init/Mean/Max Alt are computed over the
+// block (see altitudeStatsInBlock()). `extra` sets the row's own flags:
+// compromised, belowLimit, notScheduledReason ('overlap' | 'altitude' |
+// 'window') and/or order.
+function makePlanRow(c, minAlt, start, end, altValues, timeGridJd, extra) {
+  const altStats = altitudeStatsInBlock(altValues, timeGridJd, start, end);
+  return {
+    id: c.id, name: c.name, color: c.color, dash: c.dash, start, end, durationDays: c.durationDays,
+    minAltConstraint: minAlt, compromised: false,
+    initAlt: altStats.atStart, meanAltitude: altStats.mean, maxAltitude: altStats.max,
+    nExp: c.nExp, expTime: c.expTime, overhead: c.overhead, ra_h: c.ra_h, dec_d: c.dec_d, priority: c.priority,
+    ...extra,
+  };
 }
 // User priority runs 1 (highest) .. 5 (lowest) — this is the size of that
 // range, used to build the per-tier count vector below.
@@ -1841,30 +1901,20 @@ function scoreBetter(a, b) {
   return altA > altB;
 }
 function buildSchedule(candidates, t0jd, t1jd, pinned) {
-  // The greedy placement above is order-sensitive, so it is tried under
-  // several heuristic orderings (soonest deadline, earliest start,
-  // shortest/longest exposure, tightest slack, highest/lowest peak altitude
-  // first) and the best-scoring result is kept. The lowest-peak-first order
-  // is the one that matches "observe each target at its own altitude peak,
-  // preferring to schedule the lower-peaking (tighter-window) targets before
-  // the higher-peaking (more flexible) ones": bestPlacement() always centers
-  // a target on its peak when it can, so placing the least flexible targets
-  // first leaves the more flexible, higher-peaking ones to absorb any
-  // remaining schedule conflicts.
+  // The greedy placement (placeInOrder()) depends on the order of the
+  // candidates, so it is run with 7 orderings (window end, window start,
+  // shortest/longest block, tightest slack, highest/lowest peak altitude)
+  // and the best-scoring result is kept (see scoreOf()). Placing the
+  // lowest-peaking (least flexible) targets first lets bestPlacement() center
+  // them on their peaks and leaves the more flexible ones to absorb conflicts.
   //
-  // Every one of those orderings is itself SUBORDINATE to priority (1
-  // highest .. 5 lowest): each comparator below sorts by priority first and
-  // its own usual criterion only as a tiebreak within the same priority
-  // tier. This means a priority-1 target always gets first claim on the
-  // busy-time gaps — and therefore the best shot at its own altitude peak —
-  // before any lower-priority target is even considered, regardless of
-  // which of the 7 strategies ends up scoring best overall (see scoreOf()'s
-  // own comment on how priority also dominates the scoring used to pick
-  // among them).
+  // Every ordering sorts by priority (1 highest .. 5 lowest) first and uses
+  // its own criterion only within a priority tier, so a priority-1 target
+  // always gets first claim on the free time, whichever ordering wins.
   if (candidates.length===0) return { scheduled: [], dropped: [] };
 
   // `pinned` (optional: [{id, start, end}, ...]) are targets already marked
-  // "finished" in OBSERVATION TIMELINE — their placement is never
+  // "finished" in LOGBOOK — their placement is never
   // re-optimized (re-running the scheduler, e.g. after deleting an
   // unrelated target, must not move an observation that already happened);
   // they're carved out here and re-inserted as fixed busy intervals that
@@ -1874,22 +1924,13 @@ function buildSchedule(candidates, t0jd, t1jd, pinned) {
   const pinnedScheduled = (pinned || [])
     .map((p) => {
       const c = candidates.find((x) => String(x.id) === String(p.id));
-      if (!c) return null;
-      const altStats = altitudeStatsInBlock(c.altValues, c.timeGridJd, p.start, p.end);
-      return {
-        id: c.id, name: c.name, color: c.color, dash: c.dash, start: p.start, end: p.end, durationDays: c.durationDays,
-        peakAltitude: c.window.peakAlt, minAltConstraint: c.minAltitude, compromised: !!p.compromised,
-        initAlt: altStats.atStart, meanAltitude: altStats.mean, maxAltitude: altStats.max,
-        nExp: c.nExp, expTime: c.expTime, overhead: c.overhead, ra_h: c.ra_h, dec_d: c.dec_d, priority: c.priority,
-      };
+      return c ? makePlanRow(c, c.minAltitude, p.start, p.end, c.altValues, c.timeGridJd, { compromised: !!p.compromised }) : null;
     })
     .filter(Boolean);
   const initialBusy = pinnedScheduled.map((s) => [s.start, s.end]);
 
-  // OBSERVATION PLAN's own row order always comes straight from whichever
-  // strategy below scores best (for the non-pinned targets) — it is never
-  // user-reorderable (that's what the OBSERVATION TIMELINE table's
-  // independent, display-only reordering is for instead; see timelineOrder).
+  // The OBSERVATION PLAN is always in chronological order of this result; it
+  // cannot be reordered by hand (the LOGBOOK can; see timelineOrder).
   let best = { scheduled: [], dropped: [] };
   if (freeCandidates.length) {
     const strategies = [
@@ -1909,9 +1950,8 @@ function buildSchedule(candidates, t0jd, t1jd, pinned) {
   }
   const scheduled = [...pinnedScheduled, ...best.scheduled];
   scheduled.sort((a,b)=>a.start-b.start);
-  // belowThreshold entries (see placeInOrder()) aren't real placements —
-  // they go at the very end of the list instead, continuing the same #
-  // numbering, rather than being sorted in among the actual schedule.
+  // belowThreshold entries (see placeInOrder()) are not real placements: they
+  // go at the end of the list, continuing the # numbering.
   const all = [...scheduled, ...(best.belowThreshold || [])];
   all.forEach((s,i)=>{ s.order = i+1; });
   return { scheduled: all, dropped: best.dropped };
@@ -1949,13 +1989,9 @@ function createTargetCard(prefill) {
   const id = Number.isFinite(savedId) && savedId > 0 ? savedId : ++rowSeq;
   const useEph = prefill.useEph !== undefined ? !!prefill.useEph : prefill.period != null;
   const useExp = prefill.useExp !== undefined ? !!prefill.useExp : prefill.n_exp != null;
-  // The color is fixed once, at creation time, and stored on the card itself
-  // (dataset.color) so that the swatch shown here and the color later read
-  // back by collectTargets() are always the same value. Previously the swatch
-  // used a color keyed by `id` while collectTargets() picked a different one
-  // keyed by the card's current position in the list, so a target's plotted
-  // color could silently drift from its sidebar swatch after removing an
-  // earlier target — that mismatch is the "colors don't work well" bug.
+  // The color (and dash pattern) is fixed at creation and stored on the card,
+  // so the swatch here and the curve/bar colors read back by collectTargets()
+  // always match, whatever cards are removed later.
   const color = prefill.color || PALETTE[(id-1)%PALETTE.length];
   const dash = prefill.dash !== undefined ? prefill.dash : targetDash(id-1);
   const card = document.createElement('div');
@@ -1965,7 +2001,7 @@ function createTargetCard(prefill) {
   card.dataset.dash = dash || '';
   card.innerHTML = `
     <div class="head">
-      <span class="swatch" style="background:${color}"></span>
+      <span class="swatch" style="background:${escapeHtml(color)}"></span>
       <input type="text" class="f-name" placeholder="Name" value="${escapeHtml(prefill.name||'')}">
       <input type="text" class="f-ra" placeholder="RA (18:36:56.3)" style="max-width:120px" value="${escapeHtml(prefill.ra||'')}">
       <input type="text" class="f-dec" placeholder="Dec (+38:47:01)" style="max-width:120px" value="${escapeHtml(prefill.dec||'')}">
@@ -1997,7 +2033,7 @@ function createTargetCard(prefill) {
   });
   // Clicking the card itself (not one of its own editable fields/buttons)
   // highlights this target everywhere — same toggle as clicking its row in
-  // any of the OBSERVATION PLAN/EXPOSURE TIMELINE/OBSERVATION TIMELINE/
+  // any of the OBSERVATION PLAN/EXPOSURE TIMELINE/LOGBOOK/
   // OBSERVING TIMELINE boxes, or its curve on the visibility plot.
   card.addEventListener('click', (e) => {
     if (e.target.closest('input, button, select, textarea, label')) return;
@@ -2041,7 +2077,7 @@ function collectTargets() {
       const overhead = card.querySelector('.f-ownoverhead').value;
       const minalt = card.querySelector('.f-ownminalt').value;
       const priorityRaw = card.querySelector('.f-priority').value;
-      t.n_exp = Number.isFinite(nexp) ? nexp : null;
+      t.n_exp = Number.isFinite(nexp) ? nexp : null;  // Must be a whole number, checked in computeAll()
       t.exp_time = Number.isFinite(exptime) ? exptime : null;
       t.overhead = overhead !== '' ? parseFloat(overhead) : null;
       t.min_altitude = minalt !== '' ? parseFloat(minalt) : null;
@@ -2070,24 +2106,21 @@ function getObservatoryConfig() {
   }
   return OBSERVATORY_PRESETS[sel];
 }
-// Re-caps OBSERVATION PLAN/TIMELINE to its own new row count — see
-// getMaxRowsObs() — and, transitively, TARGETS/LOG, which match whatever
-// height it ends up at.
+// "Max rows" of OBSERVATION PLAN/LOGBOOK (see getMaxRowsObs()); TARGETS and
+// LOG follow its new height.
 document.getElementById('inp-max-rows-obs').addEventListener('change', () => {
   syncObsBoxHeight();
   syncLogBoxHeight();
   syncTargetsBoxHeight();
   saveToLocalStorage();
 });
-// Re-caps EXPOSURE TIMELINE/OBSERVING TIMELINE to its own new row count —
-// see getMaxRowsGantt(). Self-contained: unlike OBSERVATION PLAN/TIMELINE,
-// nothing else's size depends on this box.
+// "Max rows" of EXPOSURE/OBSERVING TIMELINE (see getMaxRowsGantt()); no other
+// box depends on its height.
 document.getElementById('inp-max-rows-gantt').addEventListener('change', () => {
   syncGanttBoxHeight();
   saveToLocalStorage();
 });
-// Only reveal the custom-observatory fields (name/lat/lon/elevation) once
-// "Custom" is actually selected; the presets don't need them.
+// The custom-observatory fields are shown only for "Custom…".
 document.getElementById('inp-observatory').addEventListener('change', (e) => {
   document.getElementById('custom-obs-fields').classList.toggle('hidden', e.target.value !== 'custom');
   updateWeatherPanel();
@@ -2111,19 +2144,17 @@ document.getElementById('inp-sched-end').addEventListener('change', (e) => {
    fetch() from here would always be blocked — the local server does the
    actual upstream request server-side, where CORS does not apply.
    ====================================================================== */
-// Both OT and ORM have several independent weather stations to pick among
-// (see the <select id="inp-weather-station">, populated per-observatory by
-// populateWeatherStationSelect()); any other (custom) observatory has no
-// known weather source at all.
+// Weather stations (id, label) of each observatory with a weather source,
+// listed in <select id="inp-weather-station"> (see
+// populateWeatherStationSelect()). Other observatories have none.
 const WEATHER_STATIONS = {
   OT: [['song', 'SONG'], ['stella', 'STELLA'], ['speculoos', 'SPECULOOS']],
   ORM: [['not', 'NOT'], ['tng', 'TNG'], ['gtc', 'GTC'], ['int', 'INT'], ['magic', 'MAGIC'], ['liverpool', 'Liverpool Telescope']],
 };
-// Rebuilds the <select>'s own <option>s for whichever observatory is
-// currently chosen, keeping the previous selection if it's still valid
-// there (e.g. switching between two ORM sub-selections) — must run BEFORE
-// anything tries to set the select's .value (a value with no matching
-// <option> is silently ignored by the browser), see applySessionData().
+// Rebuilds the station <option>s for the selected observatory, keeping the
+// previous station if it is still valid. Must run before setting the
+// select's value (a value with no matching <option> is ignored), see
+// applySessionData().
 function populateWeatherStationSelect() {
   const obs = document.getElementById('inp-observatory').value;
   const sel = document.getElementById('inp-weather-station');
@@ -2133,28 +2164,32 @@ function populateWeatherStationSelect() {
   sel.innerHTML = list.map(([v, label]) => `<option value="${v}">${label}</option>`).join('');
   if (list.some(([v]) => v === prevValue)) sel.value = prevValue;
 }
-// The currently selected weather station id, or null for any observatory
-// with no known weather source (i.e. anything but OT/ORM — see
-// WEATHER_STATIONS below).
+// The selected weather station id, or null for an observatory without a
+// weather source (see WEATHER_STATIONS).
 function currentWeatherStation() {
   const obs = document.getElementById('inp-observatory').value;
-  if (obs === 'OT' || obs === 'ORM') return document.getElementById('inp-weather-station').value;
+  if (WEATHER_STATIONS[obs]) return document.getElementById('inp-weather-station').value;
   return null;
 }
 function updateWeatherPanel() {
   if (weatherProxyMissing) { disableWeatherForWeb(); return; }
   const obs = document.getElementById('inp-observatory').value;
   populateWeatherStationSelect();
-  document.getElementById('weather-station-field').classList.toggle('hidden', obs !== 'OT' && obs !== 'ORM');
+  document.getElementById('weather-station-field').classList.toggle('hidden', !WEATHER_STATIONS[obs]);
   const station = currentWeatherStation();
   document.getElementById('weather-unavailable').classList.toggle('hidden', station !== null);
   document.getElementById('weather-data').classList.toggle('hidden', station === null);
   if (station === null) {
+    // No weather here: forget the previous observatory's readings, so its
+    // seeing is not sampled into an observation and its alerts do not stay on
     const updatedEl = document.getElementById('weather-updated');
     updatedEl.textContent = 'n/a';
+    updatedEl.title = '';
     updatedEl.classList.add('is-error');
+    resetWeatherAlerts();
+    return;
   }
-  fetchWeatherNow(true); // observatory just changed — an explicit "read it again" moment, same as switching station
+  fetchWeatherNow(true); // Observatory just changed: read it again, bypassing the server cache
 }
 // Returns 0 (no alert) to 3 (worst) for a numeric reading against three
 // rising cutoffs. NaN (parsed from "-"/missing data) never exceeds a
@@ -2165,28 +2200,33 @@ function thresholdLevel(value, yellow, orange, red) {
   if (value > yellow) return 1;
   return 0;
 }
-// Sets a WEATHER box field's text and its wx-lvl-N alert color (or clears
-// it for level 0/falsy); returns `level` unchanged, for use in a sum/reduce
-// over a box's several fields to get the box's own overall worst level.
+// Sets a WEATHER field's text and its wx-lvl-N alert color (none for 0).
 function setWeatherField(id, text, level) {
   const el = document.getElementById(id);
   el.textContent = text;
   el.classList.remove('wx-lvl-1', 'wx-lvl-2', 'wx-lvl-3');
   if (level) el.classList.add('wx-lvl-' + level);
-  return level;
 }
-// The most recently displayed seeing reading, so clicking "Observed" in the
-// observation plan can capture "the seeing at the moment of observing"
-// (see the schedule table's obs-btn click handler).
+// Alert limits of the WEATHER readings: a value above levels[0], levels[1]
+// or levels[2] is alert level 1 (yellow), 2 (orange) or 3 (red). `limit` is
+// the first (yellow) limit as quoted in the log. Precipitation has no
+// numeric limits: any reported precipitation is level 3 (see
+// fetchWeatherNow()).
+const WEATHER_LIMITS = {
+  humidity:   { label: 'Humidity',   field: 'weather-humidity',   levels: [60, 70, 80],   limit: '60%' },
+  wind_speed: { label: 'Wind speed', field: 'weather-wind-speed', levels: [10, 12, 14],   limit: '10 m/s' },
+  dust:       { label: 'Dust',       field: 'weather-dust',       levels: [50, 100, 150], limit: '50 µg/m³' },
+};
+// Every value field of the WEATHER box.
+const WEATHER_FIELD_IDS = ['weather-temperature', 'weather-humidity', 'weather-wind-speed', 'weather-wind-direction',
+                           'weather-precipitation', 'weather-dust', 'weather-seeing'];
+// The latest seeing reading ('-' if none): captured at the start/end clicks
+// of an observation and sampled while it runs (see takeSeeingSample()).
 let lastWeatherSeeing = '-';
-// Auto-refresh cadence: 5 minutes normally, but drops to 30 seconds as soon
-// as either (a) any threshold (humidity/wind/dust/precipitation) is exceeded,
-// or (b) a target is actively "Observing" (started, not yet finished) — the
-// weather is scientifically relevant while a real observation is in
-// progress, not just during a bad-weather alert. It reverts to 5 minutes
-// the first time neither condition holds any more. A single re-armed timer
-// (not setInterval) so the station-change/manual-refresh callers below
-// never race a second one running in parallel.
+// Auto-refresh cadence: every 5 min, or every 30 s while a weather limit is
+// exceeded or a target is "Observing" (its seeing is being sampled). A
+// single timer re-armed after each reading (not setInterval), so manual
+// refreshes and station changes never leave a second one running.
 const WEATHER_REFRESH_NORMAL_MS = 300000;
 const WEATHER_REFRESH_ALERT_MS = 30000;
 let weatherRefreshTimer = null;
@@ -2195,22 +2235,16 @@ let weatherRefreshTimer = null;
 function isAnyTargetObserving() {
   return Object.values(scheduleNotes).some((n) => n.status === 'started');
 }
-// Bumped on every call, and stamped onto that call's own request — a
-// response is applied to the DOM only if it's still the MOST RECENTLY
-// issued request by the time it arrives. Without this, a slow earlier
-// request (e.g. an automatic poll) landing AFTER a faster later one (e.g.
-// the user's own manual refresh) would silently overwrite the fresher data
-// with the stale one — the exact "mixing old and new" this guards against.
+// Sequence number of the latest weather request: a response is applied only
+// if no newer request was issued meanwhile, so a slow automatic poll never
+// overwrites a fresher manual refresh.
 let weatherRequestSeq = 0;
-// Tracks each weather field's last alert level (0/2/3, same numbering as
-// setWeatherField()'s own wx-lvl-N), so a log line fires only once per
-// crossing into or out of an alert state — not every single tick — same
-// idea as moonAlertLevels for the OBSERVATION TIMELINE's Moon Dist column.
+// Current alert level (0-3) of each weather reading, as of the last good
+// reading: drives the log lines (only when a limit is crossed, see
+// logWeatherThresholdChange()), the box alerts and the alarm.
 const weatherAlertLevels = { humidity: 0, wind_speed: 0, dust: 0, precipitation: 0 };
-// `limitText` names the actual configured limit being applied (e.g. "10
-// m/s") so a log line is self-contained — readable on its own later, without
-// having to go dig up thresholdLevel()'s own cutoffs to know what "exceeded"
-// meant at the time.
+// Logs a reading crossing into or out of its alert range (not every
+// reading), quoting the limit (e.g. "10 m/s") so the line reads on its own.
 function logWeatherThresholdChange(fieldLabel, fieldKey, newLevel, valueText, limitText) {
   const prevLevel = weatherAlertLevels[fieldKey];
   if (newLevel > 0 && prevLevel === 0) {
@@ -2228,7 +2262,7 @@ const WEATHER_WEB_MESSAGE = 'Live weather is only available when BinarAlt is lau
 function disableWeatherForWeb() {
   if (!weatherProxyMissing) log('Running as a web page: live weather is disabled (launch BinarAlt from PANORAMA to enable it).', 'info');
   weatherProxyMissing = true;
-  if (weatherRefreshTimer) { clearTimeout(weatherRefreshTimer); weatherRefreshTimer = null; }
+  resetWeatherAlerts();
   document.getElementById('weather-station-field').classList.add('hidden');
   document.getElementById('weather-data').classList.add('hidden');
   document.getElementById('btn-weather-refresh').classList.add('hidden');
@@ -2240,13 +2274,144 @@ function disableWeatherForWeb() {
   updatedEl.title = 'Live weather needs the local PANORAMA server';
   updatedEl.classList.add('is-error');
 }
-// `force`: bypass the server's own cache (see _WeatherService.get()) — used
-// for the manual refresh button and for switching station/observatory,
-// explicit "read it again, right now" actions; the automatic poll below
-// doesn't need it since the server's cache TTL is already shorter than its
-// own fastest interval. Returns true only once a genuinely fresh reading
-// was fetched AND actually applied (not superseded, not an error) — the
-// refresh button uses this to show its own brief success tick.
+// Overall (worst) alert level of the last good weather reading.
+function currentWeatherAlertLevel() {
+  return Math.max(0, ...Object.values(weatherAlertLevels));
+}
+// Re-arms the automatic refresh, at the cadence described above
+// WEATHER_REFRESH_NORMAL_MS.
+function scheduleNextWeatherRefresh() {
+  if (weatherRefreshTimer) clearTimeout(weatherRefreshTimer);
+  const fast = currentWeatherAlertLevel() > 0 || isAnyTargetObserving();
+  weatherRefreshTimer = setTimeout(fetchWeatherNow, fast ? WEATHER_REFRESH_ALERT_MS : WEATHER_REFRESH_NORMAL_MS);
+}
+// Forgets every reading and alert (observatory without weather, or web
+// version): stops the refresh, clears the seeing and switches the box
+// alerts and the alarm off.
+function resetWeatherAlerts() {
+  if (weatherRefreshTimer) { clearTimeout(weatherRefreshTimer); weatherRefreshTimer = null; }
+  for (const k of Object.keys(weatherAlertLevels)) weatherAlertLevels[k] = 0;
+  for (const id of WEATHER_FIELD_IDS) setWeatherField(id, '-', 0);
+  lastWeatherSeeing = '-';
+  setWeatherAlarm(0);
+}
+
+/* ----------------------------------------------------------------------
+   Box-level weather alert and alarm. `level` is the overall (worst) alert
+   level of the WEATHER readings: 0 = all within limits, 1/2/3 =
+   yellow/orange/red, same numbering as thresholdLevel()/wx-lvl-N.
+   ---------------------------------------------------------------------- */
+// Boxes that show the overall weather alert (border + tint, see .box-alert-N).
+const WEATHER_ALERT_BOX_IDS = ['weather-box', 'schedule-box', 'gantt-box'];
+// Alarm state machine. Only the RED level (3) rings: yellow and orange are
+// shown on the boxes alone (border + tint), with no sound and no bell.
+//   'idle'     — no red limit exceeded; the alarm is armed for the next one.
+//   'ringing'  — a red limit is exceeded; the beep loop runs and the bell
+//                shows.
+//   'silenced' — the user clicked the bell; stays quiet (bell hidden) until
+//                the level drops below red, which re-arms it ('idle').
+let weatherAlarmState = 'idle';
+let weatherAlarmTimer = null;
+let weatherAudioCtx = null;
+// Repeat period of the beep pattern while ringing.
+const WEATHER_ALARM_PERIOD_MS = 2000;
+// Lazily creates the shared AudioContext (Web Audio API, so no sound file
+// is needed). Browsers create it 'suspended' until the page has received a
+// user gesture (autoplay policy) — see unlockWeatherAudio().
+function getWeatherAudioCtx() {
+  if (!weatherAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    weatherAudioCtx = new Ctx();
+  }
+  return weatherAudioCtx;
+}
+// One period of the alarm pattern: three short two-tone beeps (880/660 Hz).
+// A no-op while the context is still suspended, so a beep is never queued
+// up and released all at once when the page is finally unlocked.
+function playWeatherAlarmBeep() {
+  const ctx = getWeatherAudioCtx();
+  if (!ctx || ctx.state !== 'running') return;
+  const t0 = ctx.currentTime + 0.02;
+  for (let i = 0; i < 3; i++) {
+    const start = t0 + i * 0.28;
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(880, start);
+    osc.frequency.setValueAtTime(660, start + 0.11);
+    // Short attack/release envelope to avoid clicks; peak gain kept low
+    // (square waves are loud)
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.08, start + 0.01);
+    gain.gain.setValueAtTime(0.08, start + 0.21);
+    gain.gain.linearRampToValueAtTime(0, start + 0.22);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + 0.23);
+  }
+}
+// Autoplay fallback: if the alarm is triggered before any user interaction
+// (e.g. a limit is already exceeded when BinarAlt is first opened), the
+// browser keeps the AudioContext suspended and no sound comes out — the
+// boxes and the blinking bell still show the alert. The first click or key
+// press anywhere on the page then resumes the context, and the beep loop
+// (already running) becomes audible from its next period on.
+function unlockWeatherAudio() {
+  const ctx = getWeatherAudioCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+}
+document.addEventListener('pointerdown', unlockWeatherAudio, true);
+document.addEventListener('keydown', unlockWeatherAudio, true);
+function startWeatherAlarm() {
+  unlockWeatherAudio();  // Works only if the page already has a user gesture
+  playWeatherAlarmBeep();
+  clearInterval(weatherAlarmTimer);
+  weatherAlarmTimer = setInterval(playWeatherAlarmBeep, WEATHER_ALARM_PERIOD_MS);
+}
+function stopWeatherAlarm() {
+  clearInterval(weatherAlarmTimer);
+  weatherAlarmTimer = null;
+}
+// Applies the overall weather alert level to the boxes (any level) and to
+// the bell and the alarm (red level only). Called after every good reading,
+// and with 0 by resetWeatherAlerts(); idempotent: only a change of state
+// starts or stops the alarm.
+function setWeatherAlarm(level) {
+  for (const id of WEATHER_ALERT_BOX_IDS) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.classList.remove('box-alert-1', 'box-alert-2', 'box-alert-3');
+    if (level) el.classList.add('box-alert-' + level);
+  }
+  const bell = document.getElementById('alarm-btn');
+  bell.classList.remove('alarm-lvl-1', 'alarm-lvl-2', 'alarm-lvl-3');
+  if (level) bell.classList.add('alarm-lvl-' + level);
+  if (level >= 3 && weatherAlarmState === 'idle') {
+    weatherAlarmState = 'ringing';
+    bell.classList.remove('hidden');
+    startWeatherAlarm();
+    log('Weather alarm: a red weather limit is exceeded. Click the bell (top right) to silence it.', 'error');
+  } else if (level < 3 && weatherAlarmState !== 'idle') {
+    // Back below the red level: stop, hide the bell and re-arm, so the next
+    // red crossing rings again even if this one had been silenced
+    weatherAlarmState = 'idle';
+    stopWeatherAlarm();
+    bell.classList.add('hidden');
+  }
+}
+document.getElementById('alarm-btn').addEventListener('click', () => {
+  weatherAlarmState = 'silenced';
+  stopWeatherAlarm();
+  document.getElementById('alarm-btn').classList.add('hidden');
+  log('Weather alarm silenced (the boxes keep showing the alert until the weather is back within limits).', 'info');
+});
+// Reads the selected station's weather from the local server and updates the
+// WEATHER box, the alerts and the alarm. `force` bypasses the server's cache
+// (manual refresh, station/observatory change, start/end of an observation);
+// the automatic refresh does not need it, as the cache lifetime is shorter
+// than its fastest interval. Returns true only if a reading was received
+// and applied (not superseded by a newer request, not an error).
 async function fetchWeatherNow(force) {
   if (weatherProxyMissing) return false;
   const station = currentWeatherStation();
@@ -2271,88 +2436,77 @@ async function fetchWeatherNow(force) {
   } catch (e) {
     data = { ok: false };
   }
-  // Either the station changed, or a NEWER request (started after this one)
-  // has already landed and been applied — this response is stale, drop it
-  // rather than paint the panel backward.
+  // Station changed, or a newer request was issued meanwhile: drop this response
   if (currentWeatherStation() !== station || mySeq !== weatherRequestSeq) return false;
+  const updatedEl = document.getElementById('weather-updated');
+  if (!data.ok) {
+    // A failed reading says nothing about the weather: the values are blanked,
+    // but the alert levels, box alerts and alarm of the last good reading are
+    // kept (resetting them would log false "back within its limit" lines and
+    // re-ring the alarm on the next good reading). The seeing is cleared so
+    // that no stale value is sampled into an observation.
+    for (const id of WEATHER_FIELD_IDS) setWeatherField(id, '-', 0);
+    lastWeatherSeeing = '-';
+    updatedEl.textContent = 'n/a';
+    updatedEl.title = 'The last weather reading failed';
+    updatedEl.classList.add('is-error');
+    log(`Weather data for ${station.toUpperCase()} could not be retrieved.`, 'error');
+    scheduleNextWeatherRefresh();
+    return false;
+  }
+
   setWeatherField('weather-temperature', data.temperature || '-', 0);
-  const levels = [];
-  const humidityLevel = thresholdLevel(parseFloat(data.humidity), 60, 70, 80);
-  levels.push(setWeatherField('weather-humidity', data.humidity || '-', humidityLevel));
-  logWeatherThresholdChange('Humidity', 'humidity', humidityLevel, data.humidity, '60%');
-  const windLevel = thresholdLevel(parseFloat(data.wind_speed), 10, 12, 14);
-  levels.push(setWeatherField('weather-wind-speed', data.wind_speed || '-', windLevel));
-  logWeatherThresholdChange('Wind speed', 'wind_speed', windLevel, data.wind_speed, '10 m/s');
   setWeatherField('weather-wind-direction', data.wind_direction || '-', 0);
-  // Safe precipitation states: "Dry"/"Clear"/"False", or an effectively-zero
-  // reading ("0.0mm", "0.0 l/m2", "0.0", …) — anything else reported (rain,
-  // wet, "True", snow, a nonzero amount…) is a warning. No reading at all
-  // ("-", or genuinely missing) is neither — it must NOT be treated as
-  // exceeded.
+  setWeatherField('weather-seeing', data.seeing || '-', 0);
+  lastWeatherSeeing = data.seeing || '-';
+  // Readings with numeric limits (see WEATHER_LIMITS). parseFloat() of a
+  // missing reading ('-') is NaN, which never exceeds a limit.
+  const exceeding = [];  // Readings currently over their limit, for the log summary
+  for (const [key, lim] of Object.entries(WEATHER_LIMITS)) {
+    const level = thresholdLevel(parseFloat(data[key]), ...lim.levels);
+    setWeatherField(lim.field, data[key] || '-', level);
+    logWeatherThresholdChange(lim.label, key, level, data[key], lim.limit);
+    if (level) exceeding.push(`${lim.label} ${data[key] || '-'} (limit ${lim.limit})`);
+  }
+  // Precipitation. Safe: "Dry"/"Clear"/"False" or a zero amount ("0.0mm",
+  // "0.0 l/m2", "0.0"...). Anything else reported (rain, wet, "True", a
+  // nonzero amount...) is level 3. No reading at all ('-' or missing) is not
+  // an alert.
   const precipRaw = typeof data.precipitation === 'string' ? data.precipitation.trim() : '';
   const hasPrecipReading = precipRaw !== '' && precipRaw !== '-';
   const precipLower = precipRaw.toLowerCase();
   const precipNum = parseFloat(precipRaw);
   const isDryLike = precipLower === 'dry' || precipLower === 'clear' || precipLower === 'false';
   const isPrecipSafe = isDryLike || (Number.isFinite(precipNum) && precipNum === 0);
-  // A plain is-it-raining indicator (no numeric amount) is worded
-  // differently by each source (DRY, dry, Clear, Wet, True/False,
-  // "raining"…) — normalize it to exactly "False"/"True" here so the panel
-  // always reads the same way. A numeric reading (which does carry real
-  // information — the amount and its unit) is left exactly as the source
-  // reported it.
+  // A yes/no indicator is worded differently by each station (DRY, Clear,
+  // Wet, True/False, "raining"...): it is shown as "False"/"True". A numeric
+  // amount is shown as reported (value and unit).
   let precipDisplay = data.precipitation || '-';
   if (hasPrecipReading && !Number.isFinite(precipNum)) {
     precipDisplay = isDryLike ? 'False' : 'True';
   }
   const precipLevel = hasPrecipReading && !isPrecipSafe ? 3 : 0;
-  levels.push(setWeatherField('weather-precipitation', precipDisplay, precipLevel));
+  setWeatherField('weather-precipitation', precipDisplay, precipLevel);
   logWeatherThresholdChange('Precipitation', 'precipitation', precipLevel, precipDisplay, 'none detected');
-  const dustLevel = thresholdLevel(parseFloat(data.dust), 50, 100, 150);
-  levels.push(setWeatherField('weather-dust', data.dust || '-', dustLevel));
-  logWeatherThresholdChange('Dust', 'dust', dustLevel, data.dust, '50 µg/m³');
-  setWeatherField('weather-seeing', data.seeing || '-', 0);
-  lastWeatherSeeing = data.seeing || '-';
-  // Per-parameter threshold-CROSSING lines (logWeatherThresholdChange above)
-  // only fire the moment a level changes, so a value that's been exceeding
-  // its limit for a while doesn't keep restating itself — this summary, on
-  // every single "Weather data updated" line instead, restates whichever
-  // parameters are CURRENTLY over their limit (with their value), so that
-  // line alone always tells the full current story.
-  const exceeding = [];
-  if (humidityLevel) exceeding.push(`Humidity ${data.humidity || '-'} (limit 60%)`);
-  if (windLevel) exceeding.push(`Wind speed ${data.wind_speed || '-'} (limit 10 m/s)`);
   if (precipLevel) exceeding.push(`Precipitation ${precipDisplay} (limit none detected)`);
-  if (dustLevel) exceeding.push(`Dust ${data.dust || '-'} (limit 50 µg/m³)`);
-  const exceedingText = exceeding.length ? ` Exceeding limits: ${exceeding.join(', ')}.` : '';
-  const updatedEl = document.getElementById('weather-updated');
-  if (data.ok) {
-    // The moment BinarAlt actually received this reading — not the moment
-    // the button was clicked — down to the second, so a refresh is visibly
-    // provable even when the underlying values happen not to have changed.
-    const now = new Date();
-    const ts = String(now.getUTCHours()).padStart(2,'0')+':'+String(now.getUTCMinutes()).padStart(2,'0')+':'+String(now.getUTCSeconds()).padStart(2,'0');
-    updatedEl.textContent = `${ts} UT`;
-    updatedEl.title = `Last update: ${ts} UT`;
-    updatedEl.classList.remove('is-error');
-    log(`Weather data updated (${station.toUpperCase()}) — last update: ${ts} UT.${exceedingText}`, exceeding.length ? 'warn' : 'info');
-  } else {
-    updatedEl.textContent = 'n/a';
-    updatedEl.title = '';
-    updatedEl.classList.add('is-error');
-    log(`Weather data for ${station.toUpperCase()} could not be retrieved.`, 'error');
-  }
+  setWeatherAlarm(currentWeatherAlertLevel());
 
-  if (weatherRefreshTimer) clearTimeout(weatherRefreshTimer);
-  const anyExceeded = Math.max(0, ...levels) > 0;
-  const fastCadence = anyExceeded || isAnyTargetObserving();
-  weatherRefreshTimer = setTimeout(fetchWeatherNow, fastCadence ? WEATHER_REFRESH_ALERT_MS : WEATHER_REFRESH_NORMAL_MS);
-  return !!data.ok;
+  // The moment BinarAlt received this reading, to the second, so a refresh
+  // is visible even when the values themselves did not change
+  const now = new Date();
+  const ts = fmtHMS(now);
+  updatedEl.textContent = `${ts} UT`;
+  updatedEl.title = `Last update: ${ts} UT`;
+  updatedEl.classList.remove('is-error');
+  // The threshold log lines above only fire when a limit is crossed; this
+  // line restates every reading that is still over its limit
+  const exceedingText = exceeding.length ? ` Exceeding limits: ${exceeding.join(', ')}.` : '';
+  log(`Weather data updated (${station.toUpperCase()}) — last update: ${ts} UT.${exceedingText}`, exceeding.length ? 'warn' : 'info');
+  scheduleNextWeatherRefresh();
+  return true;
 }
-// Refresh button feedback: swap ⟳ for a green ✓ for 1s once a manual
-// refresh genuinely lands, then revert — the user's own visible proof that
-// a refresh actually happened, independent of whether the underlying
-// values changed.
+// Manual refresh: the ⟳ button shows a green ✓ for 1 s once a reading has
+// actually been received.
 let weatherRefreshFlashTimer = null;
 async function refreshWeatherManually() {
   const btn = document.getElementById('btn-weather-refresh');
@@ -2383,13 +2537,9 @@ function formatCountdown(ms) {
   const s = totalSec % 60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
-// Used only when no planning date is set (see computeCurrentSunEvents()).
-// Each event's own crossing direction (-1 = sun descending, +1 = ascending)
-// and altitude threshold, searched forward from `now` — this alone is what
-// makes each result always be that event's next actual occurrence, skipping
-// over ones already passed without needing to know which "night" they're in.
-// Shared by the EPHEMERIS box (the times themselves) and the COUNTDOWN box
-// (time remaining to each), so both always agree with each other.
+// Next occurrence of each Sun event after `now` (direction -1 = Sun setting,
+// +1 = rising, at its own altitude threshold). Used by EPHEMERIS/COUNTDOWN
+// only when no planning date is set (see computeCurrentSunEvents()).
 function computeSunEvents(observer, now, sunsetAlt, sunriseAlt, twiEveAlt, twiMornAlt) {
   const nowTime = Astronomy.MakeTime(now);
   return {
@@ -2399,18 +2549,12 @@ function computeSunEvents(observer, now, sunsetAlt, sunriseAlt, twiEveAlt, twiMo
     sunrise: { label: 'Sunrise', t: Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, +1, nowTime, 2, sunriseAlt) },
   };
 }
-// Returns a Date set to the mean local noon (UTC) of the planning date from
-// inp-date (see localNoonUTC()), or the current time if the field is
-// empty/invalid. Used as the search
-// start for EPHEMERIS/COUNTDOWN so they always show events for the
-// night being planned rather than always searching from "now".
+// Search start for EPHEMERIS/COUNTDOWN: the mean local noon (UTC) of the
+// planning date (see localNoonUTC()), so they show the planned night, or the
+// current time if no valid date is set.
 function getPlanningSearchDate() {
   const dateVal = document.getElementById('inp-date').value; // "YYYY-MM-DD"
   if (dateVal) {
-    // Start the forward search from the mean local noon of the planning date
-    // (see localNoonUTC()) so SearchAltitude always finds sunset → twilight →
-    // twilight → sunrise of that night (afternoon → next morning), matching
-    // the plotted night at any longitude.
     const d = new Date(dateVal + 'T12:00:00Z');
     if (!isNaN(d.getTime())) {
       const lon = getObservatoryConfig().lon;
@@ -2419,7 +2563,8 @@ function getPlanningSearchDate() {
   }
   return new Date();
 }
-// Formats a planning date as "DD Mon YYYY" (e.g. "17 Oct 2026").
+// Formats a planning date ("YYYY-MM-DD") as "MM/DD/YYYY" for the EPHEMERIS
+// and COUNTDOWN headers.
 function formatPlanningDate(dateVal) {
   if (!dateVal) return '';
   const d = new Date(dateVal + 'T12:00:00Z');
@@ -2438,11 +2583,9 @@ function updateEphemerisDateLabels() {
   if (el1) el1.textContent = label;
   if (el2) el2.textContent = label;
 }
-// Reads the current observatory/scheduler-threshold settings and returns
-// the sun events of the planning night (nightWindow(), as in the plot) or,
-// without a date, computeSunEvents()'s next events from now; null if anything's
-// missing or invalid — the one place that config-reading is done, shared by
-// updateEphemeris() and updateCountdownBox() so they can never disagree.
+// Sun events for EPHEMERIS/COUNTDOWN: those of the planning night
+// (nightWindow(), as in the plot) or, without a date, the next ones from now
+// (computeSunEvents()); null if a setting is missing or invalid.
 function computeCurrentSunEvents() {
   try {
     const obsCfg = getObservatoryConfig();
@@ -2467,10 +2610,10 @@ function computeCurrentSunEvents() {
     return computeSunEvents(observer, getPlanningSearchDate(), sunsetAlt, sunriseAlt, twiEveAlt, twiMornAlt);  // No date: next events from now
   } catch (e) { return null; }
 }
-// Observatory/user-local/UT clocks shown in the TIME box. All three (and
-// the EPHEMERIS box below) use 24-hour time throughout — the
-// default locale format could otherwise slip into 12-hour AM/PM, which
-// wouldn't match the rest of the app (24h everywhere else).
+// Clocks of the TIME box (always 24-hour, like the rest of the app): the
+// user's local time, the observatory's time (its IANA time zone, with
+// daylight saving time; for a custom observatory, its fixed UT offset), UT
+// and the current Julian Date.
 function updateClocks() {
   const now = new Date();
   document.getElementById('clock-ut').textContent = now.toISOString().slice(11, 19) + ' UT';
@@ -2483,7 +2626,7 @@ function updateClocks() {
     try {
       el.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false, timeZone: preset.tz});
       return;
-    } catch (e) { /* fall through to the longitude approximation below */ }
+    } catch (e) { /* Unknown time zone: fall through to the UT offset below */ }
   }
   // Custom observatories have no known IANA time zone, so the user-supplied
   // UT offset is used instead — no DST, and clearly marked as such. Left
@@ -2499,8 +2642,7 @@ function updateClocks() {
     el.textContent = '-';
   }
 }
-// Sunset/twilight/sunrise times for the EPHEMERIS box. Times are UT (24h),
-// matching the rest of the app.
+// Sunset/twilight/sunrise times (UT) of the EPHEMERIS box.
 const SUN_EVENT_ROW_IDS = { sunset: 'sunset', twiEve: 'twieve', twiMorn: 'twimorn', sunrise: 'sunrise' };
 function updateEphemeris(events) {
   for (const key of Object.keys(SUN_EVENT_ROW_IDS)) {
@@ -2509,8 +2651,7 @@ function updateEphemeris(events) {
     el.textContent = (ev && ev.t) ? `${fmtHM(ev.t.date)} UT` : '-';
   }
 }
-// Time remaining to each of those same events, in the separate COUNTDOWN
-// box below EPHEMERIS.
+// Time remaining to each of those events, in the COUNTDOWN box.
 function updateCountdownBox(events) {
   const now = new Date();
   for (const key of Object.keys(SUN_EVENT_ROW_IDS)) {
@@ -2557,14 +2698,9 @@ function updateMoonEphemeris(moon) {
   document.getElementById('countdown-moonrise').textContent = moon && moon.rise ? formatCountdown(moon.rise.date - now) : '-';
   document.getElementById('countdown-moonset').textContent = moon && moon.set ? formatCountdown(moon.set.date - now) : '-';
 }
-// Live angular separation from the Moon, for the OBSERVATION PLAN table's
-// "Moon dist." column — recomputed every tick (like the clocks/countdown
-// above) since it changes continuously with the real current time,
-// independent of whether/when the plan itself is re-rendered.
 // Angular separation (degrees) between the Moon and a fixed RA/Dec direction
-// at a given Astronomy Engine `time`. Reuses the shared Star1 slot (see
-// starAltitudeSeries()'s own comment on why that's safe — only one
-// arbitrary-coordinate star needs to exist at a time).
+// at a given Astronomy Engine `time`, as seen by the observer. Reuses the
+// Star1 slot (see starAltitudeSeries()).
 function moonSeparationDeg(observer, time, ra_h, dec_d) {
   Astronomy.DefineStar(Astronomy.Body.Star1, ra_h, dec_d, 100);
   const starEq = Astronomy.Equator(Astronomy.Body.Star1, time, observer, true, true);
@@ -2590,15 +2726,14 @@ function starAltitudeDeg(observer, time, ra_h, dec_d) {
   const eq = Astronomy.Equator(Astronomy.Body.Star1, time, observer, true, true);
   return Astronomy.Horizon(time, observer, eq.ra, eq.dec, null).altitude;
 }
-// Same secant approximation as the visibility plot's own airmass axis
-// (see its "Airmass" axis labels): null below the horizon, where airmass
-// is undefined.
+// Airmass as sec(z) = 1 / sin(alt), as on the visibility plot's airmass
+// axis; null below the horizon, where it is undefined.
 function airmassFromAltDeg(altDeg) {
   return altDeg > 0 ? (1 / Math.sin(altDeg * Math.PI / 180)) : null;
 }
 // Mean airmass across the REAL Start/End Observation clicks (5-point
-// sample, same convention as moonDistMeanInBlock()) — the OBSERVATION
-// TIMELINE's own "Airmass" column, distinct from OBSERVATION PLAN's
+// sample, same convention as moonDistMeanInBlock()) — the LOGBOOK's own
+// "Airmass" column, distinct from OBSERVATION PLAN's
 // planned Mean Alt (this is what actually happened, not the schedule).
 function meanAirmassInObservation(observer, ra_h, dec_d, startedAt, finishedAt) {
   const n = 5;
@@ -2617,11 +2752,13 @@ function meanAirmassInObservation(observer, ra_h, dec_d, startedAt, finishedAt) 
 function formatAirmassRange(note, observer, ra_h, dec_d) {
   if (!note.startedAt) return '-';
   if (!note.finishedAt) return '…';
+  // No night computed (every target removed) or no coordinates: nothing to compute
+  if (!observer || !Number.isFinite(ra_h) || !Number.isFinite(dec_d)) return '-';
   const mean = meanAirmassInObservation(observer, ra_h, dec_d, note.startedAt, note.finishedAt);
   return mean !== null ? mean.toFixed(2) : '-';
 }
-// 0 (safe), 2 (orange, <30°) or 3 (red, <10°) — same severity numbering as
-// the WEATHER box's thresholdLevel() so both share the .wx-lvl-N box CSS.
+// Alert level of a Moon distance (deg): 0 (safe), 2 (orange, < 30°) or
+// 3 (red, < 10°), same numbering and .wx-lvl-N styles as the weather alerts.
 function moonDistLevel(deg) {
   if (!Number.isFinite(deg)) return 0;
   if (deg < 10) return 3;
@@ -2632,9 +2769,8 @@ function moonDistLevel(deg) {
 // Moon" log line fires only once per crossing into an alert (not every
 // tick) — reset back to 0 once it clears, so the next crossing logs again.
 const moonAlertLevels = {};
-// Live "current" Moon Dist column in OBSERVATION TIMELINE — recomputed every
-// tick (see tickLiveDisplays()) since it changes continuously with the real
-// current time, independent of when the timeline itself is next re-rendered.
+// LOGBOOK's live Moon Dist column (distance now), updated every second by
+// tickLiveDisplays().
 function updateMoonDistances() {
   const cells = document.querySelectorAll('.tl-moon-current');
   if (!cells.length) return;
@@ -2659,17 +2795,15 @@ function updateMoonDistances() {
     moonAlertLevels[id] = level;
   });
 }
-// Repositions the "now" marker line on both the main plot and the exposure
-// timeline (see their own `<line id="now-line-...">` elements) — a cheap
-// attribute update rather than a full re-render, so it can tick every
-// second without disturbing anything else on either chart. Margins (ML/MR)
-// match render()/renderGantt()'s own constants exactly.
+// Moves the "now" line of the visibility plot and both timelines (a cheap
+// attribute update, done every second, instead of a re-render). Hidden
+// when "now" is outside the plotted night.
 function updateNowLines() {
   if (!lastPlot) return;
   const nowJd = dateToJd(new Date());
   const t0 = lastPlot.t0jd, t1 = lastPlot.t1jd;
   const inRange = t1 > t0 && nowJd >= t0 && nowJd <= t1;
-  const ML = 120, MR = 60;
+  const ML = CHART_ML, MR = CHART_MR;
   [['plot-svg', 'now-line-plot'], ['gantt-svg', 'now-line-gantt'], ['obs-gantt-svg', 'now-line-obs-gantt']].forEach(([svgId, lineId]) => {
     const svg = document.getElementById(svgId);
     const line = svg && document.getElementById(lineId);
@@ -2681,95 +2815,133 @@ function updateNowLines() {
     line.setAttribute('x2', x);
   });
 }
+// The EPHEMERIS/COUNTDOWN events only change when one of their inputs
+// changes or, with no planning date, when one of the "next" events has
+// passed, so they are cached instead of being searched every second. The
+// cache key holds every input they depend on; without a date the cache also
+// expires at the first cached event, and at least every 10 min (the Moon
+// illumination is then the one at "now").
+const LIVE_EVENTS_INPUT_IDS = ['inp-date', 'inp-observatory', 'obs-lat', 'obs-lon', 'obs-elev',
+                               'inp-sunset-alt', 'inp-sunrise-alt', 'inp-twieve-alt', 'inp-twimorn-alt'];
+const LIVE_EVENTS_MAX_AGE_MS = 600000;
+let liveEventsCache = { key: null, expires: 0, sun: null, moon: null };
+function getLiveEvents() {
+  const key = LIVE_EVENTS_INPUT_IDS.map((id) => document.getElementById(id).value).join('|');
+  const nowMs = Date.now();
+  if (key !== liveEventsCache.key || nowMs >= liveEventsCache.expires) {
+    const sun = computeCurrentSunEvents();
+    const moon = computeCurrentMoonEvents();
+    let expires = Infinity;
+    if (!document.getElementById('inp-date').value) {
+      const eventTimes = [...Object.values(sun || {}).map((ev) => ev.t), moon && moon.rise, moon && moon.set]
+        .filter(Boolean)
+        .map((t) => t.date.getTime());
+      expires = Math.min(nowMs + LIVE_EVENTS_MAX_AGE_MS, ...eventTimes);
+    }
+    liveEventsCache = { key, expires, sun, moon };
+  }
+  return liveEventsCache;
+}
+// Everything that changes with the real time, run every second.
 function tickLiveDisplays() {
   updateClocks();
   updateEphemerisDateLabels();
-  const events = computeCurrentSunEvents();
-  updateEphemeris(events);
-  updateCountdownBox(events);
-  updateMoonEphemeris(computeCurrentMoonEvents());
+  const live = getLiveEvents();
+  updateEphemeris(live.sun);
+  updateCountdownBox(live.sun);
+  updateMoonEphemeris(live.moon);
   updateMoonDistances();
-  // Update the seeing cell live for any target currently "Observing", so the
-  // running mean is visible as samples accumulate — no re-render needed, just
-  // a direct textContent update on the already-rendered cell.
-  document.querySelectorAll('.obs-seeing[data-id]').forEach((cell) => {
-    const note = scheduleNotes[cell.dataset.id];
-    if (note && note.status === 'started') {
-      cell.textContent = formatSeeingRange(note);
-    }
-  });
-  // Grows any "Observing" bar's right edge live (see renderObservingGantt()'s
-  // own comment) — cheap enough to just redraw the whole (small) chart.
-  if (lastPlot) renderObservingGantt(lastPlot);
+  if (isAnyTargetObserving()) {
+    // Running seeing median of the targets being observed (direct cell update)
+    document.querySelectorAll('.obs-seeing[data-id]').forEach((cell) => {
+      const note = scheduleNotes[cell.dataset.id];
+      if (note && note.status === 'started') cell.textContent = formatSeeingRange(note);
+    });
+    // The bar of each target being observed grows with the elapsed time
+    if (lastPlot) renderObservingGantt(lastPlot);
+  }
   updateNowLines();
 }
 setInterval(tickLiveDisplays, 1000);
 tickLiveDisplays();
 
-// Resolves the "start counting observation time from" scheduler option into
-// a Julian Date, clamped to the plotted night window [t0jd, t1jd]. This only
-// affects where the scheduler is allowed to place exposures — the altitude
-// curves themselves are always plotted for the full night regardless.
-function getSchedulingStart(win, t0jd, t1jd, dateVal) {
-  const mode = document.getElementById('inp-sched-start').value;
+// Resolves the "Start/End counting observation time from" scheduler option
+// into a Julian Date, clamped to the plotted window [t0jd, t1jd]. It only
+// bounds where the scheduler may place exposures; the altitude curves always
+// cover the whole night.
+//   which = 'start': sunset, evening twilight or a custom UT time;
+//   which = 'end':   sunrise, morning twilight or a custom UT time.
+// If the twilight does not happen that night, sunset/sunrise is used. A
+// custom time earlier than t0jd on the planning date belongs to the next
+// calendar day (e.g. "02:00").
+function getSchedulingBound(which, win, t0jd, t1jd, dateVal) {
+  const isStart = which === 'start';
+  const mode = document.getElementById(isStart ? 'inp-sched-start' : 'inp-sched-end').value;
+  const twilight = isStart ? win.twiEve : win.twiMorn;
   let jd;
-  if (mode === 'twilight' && win.twiEve) {
-    jd = win.twiEve.ut + 2451545.0;
+  if (mode === 'twilight' && twilight) {
+    jd = astroTimeToJd(twilight);
   } else if (mode === 'custom') {
-    const timeVal = document.getElementById('inp-sched-start-time').value || '00:00';
+    const timeVal = document.getElementById(isStart ? 'inp-sched-start-time' : 'inp-sched-end-time').value || '00:00';
     const [hh, mm] = timeVal.split(':').map(Number);
     const d = new Date(dateVal + 'T00:00:00Z');
     d.setUTCHours(hh, mm, 0, 0);
     jd = dateToJd(d);
-    if (jd < t0jd) jd += 1; // a time like "02:00" belongs to the night's following calendar day
+    if (jd < t0jd) jd += 1;
   } else {
-    jd = win.sunset.ut + 2451545.0; // 'sunset' (default)
+    jd = astroTimeToJd(isStart ? win.sunset : win.sunrise);
   }
   return Math.min(Math.max(jd, t0jd), t1jd);
 }
 
-// Mirrors getSchedulingStart() for the "end counting observation time from"
-// scheduler option, so the operator can bound the plan's late end (e.g. stop
-// at sunrise, at morning twilight, or at a fixed UT time) independently of
-// the start.
-function getSchedulingEnd(win, t0jd, t1jd, dateVal) {
-  const mode = document.getElementById('inp-sched-end').value;
-  let jd;
-  if (mode === 'twilight' && win.twiMorn) {
-    jd = win.twiMorn.ut + 2451545.0;
-  } else if (mode === 'custom') {
-    const timeVal = document.getElementById('inp-sched-end-time').value || '00:00';
-    const [hh, mm] = timeVal.split(':').map(Number);
-    const d = new Date(dateVal + 'T00:00:00Z');
-    d.setUTCHours(hh, mm, 0, 0);
-    jd = dateToJd(d);
-    if (jd < t0jd) jd += 1; // a time like "05:00" belongs to the night's following calendar day
-  } else {
-    jd = win.sunrise.ut + 2451545.0; // 'sunrise' (default)
+// Starts the LOGBOOK of a new night when a different night (date or site)
+// is computed (see computeAll()): every target goes back to "Not observed"
+// (times, seeing and comments cleared), and the row order and the targets
+// removed from the plan, which belong to the previous night, are dropped.
+// If anything recorded by the user is lost (an observation, a comment of
+// their own, a removed target or a row order), an Undo snapshot of the
+// previous night is pushed first: the snapshot is built from the current
+// fields, so its date and site are set back to those of the night shown
+// (lastPlot.night), which the user has already changed.
+function startNewNightLogbook() {
+  const hasRecord = Object.values(scheduleNotes).some((n) => n.status !== 'none' || (n.comment && !n.autoComment))
+                    || excludedFromPlan.size > 0 || timelineOrder !== null;
+  if (hasRecord) {
+    const snapshot = buildSessionData();
+    if (lastPlot.night) Object.assign(snapshot, lastPlot.night);
+    snapshot.hasSchedule = !!(lastPlot.schedule && lastPlot.schedule.length);
+    planUndoStack.push(snapshot);
+    if (planUndoStack.length > PLAN_UNDO_MAX) planUndoStack.shift();
+    updateUndoButtonState();
   }
-  return Math.min(Math.max(jd, t0jd), t1jd);
+  for (const k of Object.keys(scheduleNotes)) delete scheduleNotes[k];
+  for (const k of Object.keys(moonAlertLevels)) delete moonAlertLevels[k];  // Moon warnings logged again for the new night
+  timelineOrder = null;
+  excludedFromPlan.clear();
+  for (const k of Object.keys(excludedTargetInfo)) delete excludedTargetInfo[k];
+  if (hasRecord) log('New night: the logbook of the previous night was cleared and every target is "Not observed" (Undo restores it; save the session to keep it).', 'warn');
 }
 
 /* ======================================================================
    MAIN PIPELINE: compute the altitude curves (and optionally the schedule)
    ====================================================================== */
-// `clampNewToNow`: only set by the live "Plan observation" button click (see
-// its own event listener below) — never by a session restore or a
-// remove-target-triggered re-schedule, both of which run on page load or
-// mid-session without a real "the user just pressed the button, right now"
-// moment behind them. When set, any target NOT already in the previous
-// schedule (i.e. genuinely new since the last real Plan Observation) has its
-// own visibility window clamped to start no earlier than the actual current
-// time, or — if a target is currently "Observing" (started, not yet
-// finished) — no earlier than that target's own planned end, whichever is
-// later. So newly-added targets are only ever placed after "now" AND after
-// whatever is being observed right now, never re-litigating a slot that's
-// already in the past or already running. Already-scheduled targets
-// are untouched by this (only "already observed" ones are pinned in place —
-// see buildSchedule()'s own comment); it's a no-op when planning a whole
-// night in advance, since "now" then falls before every target's natural
-// window anyway.
-function computeAll(doSchedule, clampNewToNow) {
+// Computes the night, the altitude curves and, if `doSchedule`, the plan.
+// Returns the state object drawn by render(), or null (with a log line) if
+// an input is invalid.
+// If the night (date or site) differs from the one shown, the previous plan
+// belongs to another night: it is not carried over (nothing is pinned) and
+// the LOGBOOK starts again with every target "Not observed" (see
+// startNewNightLogbook()), unless `keepLogbook` is set by a session restore,
+// which brings its own LOGBOOK.
+// `clampNewToNow` is set only by the "Plan Observation" button (not by a
+// session restore or a re-plan after removing a target). A target that was
+// not in the previous plan can then only be placed after the current time
+// and after the planned end of any target being observed right now. Targets
+// already in the plan are not affected (and observed ones are pinned, see
+// buildSchedule()); when planning a night in advance, "now" is before every
+// window and this has no effect, and for a night already over it is not
+// applied (see nowJd below).
+function computeAll(doSchedule, clampNewToNow, keepLogbook) {
   clearLog();
   log('Computing ephemerides for the night…');
 
@@ -2781,6 +2953,13 @@ function computeAll(doSchedule, clampNewToNow) {
   }
   const searchStart = localNoonUTC(dateVal, obsCfg.lon);  // Night starting in the evening of the local date
   const observer = makeObserver(obsCfg.lat, obsCfg.lon, obsCfg.elev);
+
+  // Night identity (date and site), compared with the one shown (lastPlot)
+  const nightKey = `${dateVal}|${obsCfg.lat}|${obsCfg.lon}|${obsCfg.elev}`;
+  const nightChanged = !!(lastPlot && lastPlot.nightKey && lastPlot.nightKey !== nightKey);
+  if (nightChanged && !keepLogbook) startNewNightLogbook();
+  // Previous plan, only if it belongs to this same night
+  const prevPlan = nightChanged ? null : lastPlot;
 
   const sunsetAlt = parseFloat(document.getElementById('inp-sunset-alt').value);
   const sunriseAlt = parseFloat(document.getElementById('inp-sunrise-alt').value);
@@ -2794,63 +2973,56 @@ function computeAll(doSchedule, clampNewToNow) {
   try { win = nightWindow(observer, searchStart, sunsetAlt, sunriseAlt, twiEveAlt, twiMornAlt); }
   catch (e) { log('Error computing the night window: ' + e.message, 'error'); return null; }
 
-  const t0jd = win.sunset.ut + 2451545.0 - 30/1440;
-  const t1jd = win.sunrise.ut + 2451545.0 + 30/1440;
+  // Plotted window: sunset to sunrise, plus 30 min on each side
+  const t0jd = astroTimeToJd(win.sunset) - 30/1440;
+  const t1jd = astroTimeToJd(win.sunrise) + 30/1440;
   const N = 200;
   const timeGridJd = Array.from({length:N}, (_,i) => t0jd + (t1jd-t0jd)*i/(N-1));
 
-  // The altitude curves above always cover the full sunset-to-sunrise window
-  // (plus a 30 min buffer) for context, but the scheduler itself may be told
-  // to only place exposures within a narrower [schedStart, schedEnd] range
-  // (e.g. wait for full astronomical darkness, or stop at a chosen time).
-  const schedStart = getSchedulingStart(win, t0jd, t1jd, dateVal);
-  const schedEnd = getSchedulingEnd(win, t0jd, t1jd, dateVal);
+  // The scheduler may be limited to a narrower range than the plotted night
+  // (e.g. from evening twilight, or until a chosen time)
+  const schedStart = getSchedulingBound('start', win, t0jd, t1jd, dateVal);
+  const schedEnd = getSchedulingBound('end', win, t0jd, t1jd, dateVal);
 
   const rawTargets = collectTargets();
   if (rawTargets.length === 0) {
     log('No targets have a complete name, RA and Dec.', 'error'); return null;
   }
 
-  // See computeAll()'s own doc comment above on clampNewToNow — ids already
-  // in the PREVIOUS plan (before this call) are never subject to it.
+  // clampNewToNow (see above) never applies to targets of the previous plan,
+  // nor to a night that is already over (now after the plotted window): there
+  // it would leave every new target out of the plan
   const nowJd = dateToJd(new Date());
   const previousScheduledIds = new Set(
-    (lastPlot && lastPlot.schedule ? lastPlot.schedule : []).map((s) => String(s.id))
+    (prevPlan && prevPlan.schedule ? prevPlan.schedule : []).map((s) => String(s.id))
   );
   // A new target must never be slotted into the target currently being
   // observed — clamp to whichever is later: "now", or the planned end of
   // whatever target is still "started" (Observing) in the PREVIOUS schedule.
   let newTargetFloorJd = nowJd;
-  if (lastPlot && lastPlot.schedule) {
-    for (const s of lastPlot.schedule) {
+  if (prevPlan && prevPlan.schedule) {
+    for (const s of prevPlan.schedule) {
       if (scheduleNotes[s.id] && scheduleNotes[s.id].status === 'started' && s.end > newTargetFloorJd) {
         newTargetFloorJd = s.end;
       }
     }
   }
 
-  // `|| 30` would also replace an explicit, legitimate "0" (observe all the
-  // way to the horizon) with the default, since 0 is falsy — only fall back
-  // to the default when the field truly didn't parse to a number.
+  // Default 30° only if the field is not a number (a valid 0° must be kept)
   const globalMinAltParsed = parseFloat(document.getElementById('inp-min-alt').value);
   const globalMinAlt = Number.isFinite(globalMinAltParsed) ? globalMinAltParsed : 30;
   const globalOverhead = parseFloat(document.getElementById('inp-overhead').value) || 0;
 
   const plotted = [];
   const candidates = [];
-  // Targets that never reach their own minimum-altitude requirement at all
-  // during the night — never even a scheduling candidate (see `!win2`
-  // below), but still shown in OBSERVATION TIMELINE with a red "not in
-  // plan" cross (see getAllTrackedTargets()), same idea as a manually
-  // excluded target.
+  // Targets that never reach their minimum altitude during the night: not
+  // scheduling candidates, but listed in the LOGBOOK as "not in plan" (see
+  // getAllTrackedTargets()).
   const belowAltitudeExcluded = [];
-  // Targets that DO reach their minimum altitude, but whose whole natural
-  // window falls outside the allowed scheduling start/end range (or, for a
-  // genuinely new target, before newTargetFloorJd — see clampNewToNow) —
-  // never even a scheduling candidate, same as belowAltitudeExcluded, but
-  // turned into a real belowLimit schedule row below (reason 'window') once
-  // doSchedule runs, so it gets the same red row in OBSERVATION PLAN /
-  // OBSERVATION TIMELINE as every other can't-be-scheduled case.
+  // Targets that reach their minimum altitude only outside the scheduling
+  // range (or, for a new target, before newTargetFloorJd; see clampNewToNow):
+  // not scheduling candidates either, but added to the plan below as
+  // unscheduled rows (reason 'window'), like the other unscheduled cases.
   const windowClampedOut = [];
 
   for (const t of rawTargets) {
@@ -2867,9 +3039,9 @@ function computeAll(doSchedule, clampNewToNow) {
 
     // --- ephemeris phases (Periodic object) ---
     let phasePoints = [];
-    // {period, t0, scale, ra_h, dec_d} once resolved — lets OBSERVATION TIMELINE's own
-    // "Obs. Phase" column compute the phase at any arbitrary time (the real observation
-    // start/end), not just these fixed plot tick marks (see phaseAt()).
+    // {period, t0, scale, ra_h, dec_d} once validated: lets the LOGBOOK's
+    // "Obs. Phase" column compute the phase at the real start/end of the
+    // observation (see phaseAt()), not only at these plot marks.
     let ephemeris = null;
     if (t.period != null) {
       if (!(t.period > 0)) {
@@ -2893,13 +3065,16 @@ function computeAll(doSchedule, clampNewToNow) {
         // by < 1 s over a night, so converting the two ends is enough)
         const tStart = scale === 'HJD' ? jdToHjd(t0jd, ra_h, dec_d) : t0jd;
         const tEnd = scale === 'HJD' ? jdToHjd(t1jd, ra_h, dec_d) : t1jd;
-        const e0 = Math.floor((tStart - t0) / t.period);
-        const e1 = Math.ceil((tEnd - t0) / t.period);
-        for (let e = e0; e <= e1 + 0.001; e += 0.1) {  // Phase marks every 0.1
-          const tEvent = t0 + e * t.period;  // In the ephemeris time scale
+        // Phase marks every 0.1, stepped in integer tenths of a cycle (k):
+        // adding 0.1 repeatedly would accumulate rounding errors and label
+        // phase 0 as "1.0"
+        const k0 = Math.floor((tStart - t0) / t.period) * 10;
+        const k1 = Math.ceil((tEnd - t0) / t.period) * 10;
+        for (let k = k0; k <= k1; k++) {
+          const tEvent = t0 + (k / 10) * t.period;  // In the ephemeris time scale
           const jd = scale === 'HJD' ? hjdToJd(tEvent, ra_h, dec_d) : tEvent;  // Plotted in JD (UTC)
           if (jd >= t0jd && jd <= t1jd) {
-            phasePoints.push({ jd, phase: ((e % 1) + 1) % 1 });
+            phasePoints.push({ jd, phase: (((k % 10) + 10) % 10) / 10 });
           }
         }
       }
@@ -2913,12 +3088,13 @@ function computeAll(doSchedule, clampNewToNow) {
         log(`'${t.name}': number of exposures and exposure time must both be given; not scheduled.`, 'error');
       } else if (!(t.n_exp > 0) || !(t.exp_time > 0)) {
         log(`'${t.name}': number of exposures and exposure time must be positive; not scheduled.`, 'error');
+      } else if (!Number.isInteger(t.n_exp)) {
+        log(`'${t.name}': the number of exposures must be a whole number; not scheduled.`, 'error');
       } else {
         const minAlt = t.min_altitude != null ? t.min_altitude : globalMinAlt;
         const overhead = t.overhead != null ? t.overhead : globalOverhead;
-        // Priority: 1 (highest) .. 5 (lowest); defaults to 3 (neutral) when
-        // not set, or when set to something invalid — see buildSchedule()'s
-        // own comment on how this drives both placement order and scoring.
+        // Priority: 1 (highest) .. 5 (lowest); 3 if not set or invalid (see
+        // buildSchedule() and scoreOf())
         let priority = 3;
         if (t.priority != null) {
           if (Number.isInteger(t.priority) && t.priority >= 1 && t.priority <= 5) {
@@ -2935,16 +3111,13 @@ function computeAll(doSchedule, clampNewToNow) {
         } else {
           let winStart = Math.max(win2.start, schedStart);
           const winEnd = Math.min(win2.end, schedEnd);
-          // A genuinely new target (not part of the plan before this call) is
-          // only ever placed after the real current time, and never inside
-          // whatever target is currently being observed — see computeAll()'s
-          // own clampNewToNow doc comment above.
-          if (clampNewToNow && !previousScheduledIds.has(String(t.id))) {
+          // New target: only after "now" and after the target being observed
+          // (see clampNewToNow above)
+          if (clampNewToNow && nowJd <= t1jd && !previousScheduledIds.has(String(t.id))) {
             winStart = Math.max(winStart, newTargetFloorJd);
           }
           if (winStart >= winEnd) {
-            // Logged once, from the unified belowLimit loop below, once this
-            // is folded into `schedule` — not here, to avoid logging twice.
+            // Logged below, with the other unscheduled targets
             windowClampedOut.push({
               id: t.id, name: t.name, color: t.color, dash: t.dash, ra_h, dec_d,
               minAltConstraint: minAlt, durationDays, nExp: t.n_exp, expTime: t.exp_time, overhead, priority,
@@ -2969,46 +3142,25 @@ function computeAll(doSchedule, clampNewToNow) {
   }
 
   let schedule = null;
-  // Ids that were tried for scheduling and did NOT make it in (dropped for
-  // overlap, or belowLimit) — used by render() to hide their curve from the
-  // visibility plot once a real plan exists (see its own comment). Only ever
-  // (re)computed on an actual Plan Observation run (doSchedule); a mere
-  // Plot Targets afterward carries the existing plan's own set forward
-  // unchanged, same as `schedule` itself below.
-  let failedIds = new Set();
   if (doSchedule) {
-    // Targets already marked "finished" (observed) in OBSERVATION TIMELINE
-    // keep the exact placement they had in the last computed plan — see
-    // buildSchedule()'s own comment on why.
-    const pinned = (lastPlot && lastPlot.schedule ? lastPlot.schedule : [])
+    // Targets already "finished" (observed) in the LOGBOOK keep the exact
+    // placement they had in the previous plan (see buildSchedule())
+    const pinned = (prevPlan && prevPlan.schedule ? prevPlan.schedule : [])
       .filter((s) => scheduleNotes[s.id] && scheduleNotes[s.id].status === 'finished')
       .map((s) => ({ id: s.id, start: s.start, end: s.end, compromised: s.compromised }));
     const res = buildSchedule(candidates, schedStart, schedEnd, pinned);
     schedule = res.scheduled;
-    // windowClampedOut targets never became scheduler candidates at all (their
-    // natural window fell outside the allowed range, or before
-    // newTargetFloorJd), so buildSchedule() never saw them — fold them in
-    // here as belowLimit rows (reason 'window'), continuing the order
-    // numbering, exactly like the overlap/altitude belowLimit rows already
-    // appended by buildSchedule() itself.
+    // windowClampedOut targets were never candidates, so buildSchedule() did
+    // not see them: they are appended here as unscheduled rows (reason
+    // 'window'), continuing the # numbering
     let nextOrder = schedule.length;
     for (const w of windowClampedOut) {
-      const altStats = altitudeStatsInBlock(w.altValues, timeGridJd, w.win2.start, w.win2.end);
       nextOrder += 1;
-      schedule.push({
-        id: w.id, name: w.name, color: w.color, dash: w.dash, start: w.win2.start, end: w.win2.end,
-        durationDays: w.durationDays, peakAltitude: w.win2.peakAlt, minAltConstraint: w.minAltConstraint,
-        compromised: false, belowLimit: true, notScheduledReason: 'window', order: nextOrder,
-        initAlt: altStats.atStart, meanAltitude: altStats.mean, maxAltitude: altStats.max,
-        nExp: w.nExp, expTime: w.expTime, overhead: w.overhead, ra_h: w.ra_h, dec_d: w.dec_d, priority: w.priority,
-      });
+      schedule.push(makePlanRow(w, w.minAltConstraint, w.win2.start, w.win2.end, w.altValues, timeGridJd,
+                                { belowLimit: true, notScheduledReason: 'window', order: nextOrder }));
     }
-    // Both belowLimit reasons from placeInOrder() (overlap — couldn't fit the
-    // candidate anywhere at all — and altitude — every fit still dips below
-    // its own limit) plus the 'window' reason folded in above are now full
-    // schedule entries, so one loop over `schedule` covers every log; only
-    // `compromised` (a real placement, just outside the ideal window) is a
-    // separate, non-belowLimit case.
+    // One log line per unscheduled target (any reason) and per compromised
+    // placement (scheduled away from its altitude window)
     for (const s of schedule) {
       if (s.belowLimit) {
         if (s.notScheduledReason === 'overlap') {
@@ -3026,27 +3178,25 @@ function computeAll(doSchedule, clampNewToNow) {
       const actuallyScheduled = schedule.filter((s) => !s.belowLimit).length;
       log(`Plan computed: ${actuallyScheduled} of ${candidates.length} schedulable target(s) observed.`, 'success');
     }
-    failedIds = new Set([
-      ...belowAltitudeExcluded.map((b) => String(b.id)),
-      ...schedule.filter((s) => s.belowLimit).map((s) => String(s.id)),
-    ]);
-  } else if (lastPlot && lastPlot.schedule) {
-    // Plot Targets alone must not blank out an existing plan — see this
-    // function's own doc comment and render()'s "solo tras Plan
-    // observation" curve filter, which reads `failedIds` from here too.
-    schedule = lastPlot.schedule;
-    failedIds = lastPlot.failedIds || new Set();
+  } else if (prevPlan && prevPlan.schedule) {
+    // "Plot Targets" alone keeps the existing plan of this same night
+    schedule = prevPlan.schedule;
   }
 
   const moon = nightMoon(observer, win);  // Illumination at midnight, rise/set only within the night
-  // Always plotted by default as a reference curve (see render()) — never a
-  // scheduling candidate, so it's kept separate from `plotted`/`candidates`
-  // and never reaches OBSERVATION PLAN or EXPOSURE TIMELINE.
+  // Moon altitude: a reference curve of the plot only (never scheduled)
   const moonAltValues = moonAltitudeSeries(observer, timeGridJd);
 
   log(`Done: ${plotted.length} target(s) plotted.`, 'success');
 
-  return { obsCfg, observer, win, t0jd, t1jd, timeGridJd, plotted, schedule, failedIds, moon, moonAltValues, globalMinAlt, belowAltitudeExcluded };
+  // `night` (the inputs that define it) lets startNewNightLogbook() build an
+  // Undo snapshot of this night after the date or site has been changed
+  const night = {
+    date: dateVal,
+    observatory: document.getElementById('inp-observatory').value,
+    customObs: buildSessionData().customObs,
+  };
+  return { obsCfg, observer, win, t0jd, t1jd, timeGridJd, plotted, schedule, moon, moonAltValues, globalMinAlt, belowAltitudeExcluded, nightKey, night };
 }
 
 /* ======================================================================
@@ -3092,10 +3242,9 @@ function hourTicksBetween(t0jd, t1jd) {
 // TIMELINE. It follows the wrap's width, but never drops below what the
 // night's hour ticks need: each "HH:MM" label (12.5px mono, ~40px wide) gets
 // PX_PER_HOUR, so labels never overlap on a narrow (mobile) screen. Below
-// that floor the wrap's overflow-x:auto scrollbar shows the rest. All three
-// charts use the same plot-area margins (ML+MR), so the same floor keeps
-// their time axes aligned.
-const CHART_MARGINS_X = 120 + 60;
+// that floor the wrap scrolls sideways. All three charts use the same
+// margins (CHART_ML/CHART_MR), so their time axes stay aligned.
+const CHART_MARGINS_X = CHART_ML + CHART_MR;
 const PX_PER_HOUR = 48;
 function chartWidth(wrap, state) {
   const hours = (state.t1jd - state.t0jd) * 24;
@@ -3106,15 +3255,10 @@ function chartWidth(wrap, state) {
   return Math.max(minW, avail);
 }
 
-// A target that has actually made it into the observation plan (scheduled,
-// not belowLimit) no longer needs to sit in the editable TARGETS box — its
-// card is hidden (not removed: collectTargets() still needs its full
-// definition on every future recompute, e.g. to keep it as a "pinned"
-// candidate once it's later marked "finished", or simply to keep showing
-// its curve/row at all). A target that later falls OUT of the plan (e.g.
-// bumped by a newer, tighter-scheduled target on a re-plan) has its card
-// reinstated automatically, since this just mirrors the CURRENT schedule
-// on every render() — nothing here is a one-way, only-ever-hide operation.
+// Hides the TARGETS card of every target scheduled in the current plan. The
+// card is hidden, not removed: collectTargets() still reads it on every
+// recompute. A target that drops out of the plan on a re-plan gets its card
+// back, since this mirrors the current plan on every render().
 function syncPlannedTargetCards(schedule) {
   const inPlanIds = new Set((schedule || []).filter((s) => !s.belowLimit).map((s) => String(s.id)));
   document.querySelectorAll('.target-card').forEach((card) => {
@@ -3134,24 +3278,15 @@ function render(state, silent) {
 
   const hasSchedule = !!(state.schedule && state.schedule.length);
 
-  // The plot's pixel width tracks its wrapper's actual current width, so it
-  // genuinely resizes with the window (see the resize listener near the
-  // bottom of this file). chartWidth() sets a floor for narrow windows,
-  // below which #plot-wrap's own overflow-x:auto takes over instead of
-  // squashing the axes (and overlapping the hour labels).
+  // The width follows the wrap (see chartWidth() and the resize handling at
+  // the end of the script), with a floor below which the wrap scrolls.
   const plotWrap = document.getElementById('plot-wrap');
   const W = chartWidth(plotWrap, state);
-  const ML = 120, MR = 60, MT = 90, MB = 44;
-  // The exposure-timeline Gantt chart used to be appended below this same
-  // plot, making the SVG grow arbitrarily tall (one row per scheduled
-  // target) and forcing the page to scroll. It is now rendered in its own
-  // box by renderGantt() below, so this plot's own height is free to be
-  // picked independently — set so its box's bottom edge lines up with the
-  // EPHEMERIS box's bottom edge (right-hand column), purely a visual
-  // alignment, not tied to anything about the data being plotted. Only
-  // attempted in the wide (side-by-side) layout; below the 900px breakpoint
-  // the columns stack vertically and cross-column alignment no longer
-  // makes sense.
+  const ML = CHART_ML, MR = CHART_MR, MT = 90, MB = 44;
+  // In the wide (three-column) layout the height is chosen so that the box's
+  // bottom edge lines up with the EPHEMERIS box in the right-hand column (a
+  // visual alignment only); below the 900px breakpoint the columns stack and
+  // the default height is used.
   const DEFAULT_MAIN_H = 340;
   let mainH = DEFAULT_MAIN_H;
   const ephemerisBox = document.getElementById('ephemeris-box');
@@ -3175,6 +3310,7 @@ function render(state, silent) {
   const grid = getComputedStyle(document.body).getPropertyValue('--grid').trim() || '#e5e5e5';
   const line = getComputedStyle(document.body).getPropertyValue('--line').trim() || '#ccc';
   const moonColor = getComputedStyle(document.body).getPropertyValue('--moon').trim() || '#4f6d94';
+  const errorColor = getComputedStyle(document.body).getPropertyValue('--error').trim() || '#b3261e';
 
   // --- background of the main plot area ---
   svg.appendChild(svgEl('rect', {x:ML, y:mainTop, width:W-ML-MR, height:mainH, fill:'none', stroke:line}));
@@ -3182,7 +3318,7 @@ function render(state, silent) {
   // --- horizontal grid (altitude) + airmass axis ---
   for (let alt=0; alt<=90; alt+=10) {
     const y = scaleY(alt);
-    svg.appendChild(svgEl('line', {x1:ML, y1:y, x2:W-MR, y2:y, stroke: alt===30?'#b3261e':grid, 'stroke-dasharray': alt===30?'2,2':null, 'stroke-width':1}));
+    svg.appendChild(svgEl('line', {x1:ML, y1:y, x2:W-MR, y2:y, stroke:grid, 'stroke-width':1}));
     const lbl = svgEl('text', {x:ML-8, y:y+4, 'text-anchor':'end', 'font-size':12, fill:muted, 'font-family':'var(--font-mono)'});
     lbl.textContent = alt;
     svg.appendChild(lbl);
@@ -3191,10 +3327,15 @@ function render(state, silent) {
     albl.textContent = airmass ? airmass.toFixed(2) : '';
     svg.appendChild(albl);
   }
-  // Altitude stays a vertical (rotated) label spanning the whole plot
-  // height, just closer to the axis itself than before; UT/LST (below) sit
-  // in the same left margin but as plain horizontal text, each at the
-  // vertical height of its own hour-tick row.
+  // Minimum altitude of the SCHEDULER box (red dashed line); a target's own
+  // minimum altitude, if set, is not drawn
+  if (Number.isFinite(state.globalMinAlt) && state.globalMinAlt > 0 && state.globalMinAlt < 90) {
+    const y = scaleY(state.globalMinAlt);
+    svg.appendChild(svgEl('line', {x1:ML, y1:y, x2:W-MR, y2:y, stroke:errorColor, 'stroke-dasharray':'2,2', 'stroke-width':1}));
+  }
+  // Axis titles: "Altitude (°)" rotated along the left axis, "Airmass" along
+  // the right one; "UT" and "LST" (below) are plain text in the left margin,
+  // at the height of their own tick rows.
   const AXIS_LABEL_X = 55;
   const axLbl = svgEl('text', {x:AXIS_LABEL_X, y:(mainTop+mainBottom)/2, 'text-anchor':'middle', 'font-size':12.5, fill:muted, transform:`rotate(-90 ${AXIS_LABEL_X} ${(mainTop+mainBottom)/2})`});
   axLbl.textContent = 'Altitude (°)';
@@ -3211,14 +3352,12 @@ function render(state, silent) {
     const t = svgEl('text', {x:x, y:mainBottom+16, 'text-anchor':'middle', 'font-size':12.5, fill:muted, 'font-family':'var(--font-mono)'});
     t.textContent = fmtHM(hd);
     svg.appendChild(t);
-    // LST along the very top. Kept closer to the sunset/twilight/sunrise
-    // labels below it (y=66/78) than to the axis title further up (y=36,
-    // now in the left margin — see AXIS_LABEL_X above), since it's read
-    // together with those event times.
-    const lstH = siderealHoursAt(state.observer, jd);
-    const lh = Math.floor(lstH), lm = Math.round((lstH-lh)*60);
+    // Local sidereal time at the same tick, along the top. Rounded to whole
+    // minutes before splitting into hours and minutes, so that e.g. 5.9999 h
+    // reads "06:00", not "05:60"
+    const lstMin = Math.round(siderealHoursAt(state.observer, jd) * 60) % 1440;
     const lstTxt = svgEl('text', {x:x, y:36, 'text-anchor':'middle', 'font-size':12, fill:muted, 'font-family':'var(--font-mono)'});
-    lstTxt.textContent = String(lh).padStart(2,'0')+':'+String(lm).padStart(2,'0');
+    lstTxt.textContent = String(Math.floor(lstMin / 60)).padStart(2,'0') + ':' + String(lstMin % 60).padStart(2,'0');
     svg.appendChild(lstTxt);
     svg.appendChild(svgEl('line', {x1:x, y1:44, x2:x, y2:mainTop, stroke:grid}));
   }
@@ -3238,8 +3377,7 @@ function render(state, silent) {
   ];
   events.forEach((ev, i) => {
     if (!ev.t) return;
-    const jd = ev.t.ut + 2451545.0;
-    const x = scaleX(jd);
+    const x = scaleX(astroTimeToJd(ev.t));
     svg.appendChild(svgEl('line', {x1:x, y1:mainTop, y2:mainBottom, x2:x, stroke:muted, 'stroke-dasharray':'4,3'}));
     const d2 = ev.t.date;
     const l1 = svgEl('text', {x:x, y:mainTop-24, 'text-anchor':'middle', 'font-size':11, fill:ink});
@@ -3251,14 +3389,9 @@ function render(state, silent) {
   });
 
   // --- altitude curves + ephemeris phases ---
-  // Every target still tracked in OBSERVATION PLAN or OBSERVATION TIMELINE —
-  // including one that couldn't actually be scheduled (dropped for overlap,
-  // below its altitude limit, or never even reaching it; see failedIds) —
-  // keeps its visibility curve here, since it's still listed in one of those
-  // tables and the curve is exactly what explains why. A target manually
-  // removed from the plan (removeTargetFromPlan()) is excluded some other
-  // way: its card is gone from the DOM, so collectTargets() no longer
-  // produces it and it's simply absent from state.plotted already.
+  // Every plotted target keeps its curve, including unscheduled ones (the
+  // curve shows why). A target removed from the plan has no card left, so
+  // it is no longer in state.plotted.
   const visiblePlotted = state.plotted;
   // Only the above-horizon portion of each track is drawn (see altitudeSegments).
   // When a target is selected (see selectedTargetId), every other curve is
@@ -3275,9 +3408,7 @@ function render(state, silent) {
     for (const seg of altitudeSegments(p.altValues)) {
       const pts = seg.map(i => `${scaleX(state.timeGridJd[i]).toFixed(1)},${scaleY(p.altValues[i]).toFixed(1)}`).join(' ');
       svg.appendChild(svgEl('polyline', {points:pts, ...curveAttrs}));
-      // Invisible, much-fatter twin polyline underneath just to make the
-      // curve easy to click — the visible stroke itself (1.8-2.6px) is too
-      // thin a target to reliably click on.
+      // Invisible, wider copy of the curve, to make it easy to click
       const hit = svgEl('polyline', {points:pts, fill:'none', stroke:'transparent', 'stroke-width':14, class:'curve-hit', 'data-id':p.id});
       hit.addEventListener('click', () => toggleSelectedTarget(p.id));
       svg.appendChild(hit);
@@ -3294,16 +3425,12 @@ function render(state, silent) {
     });
   });
 
-  // --- Moon altitude curve — always shown by default when above the
-  //     horizon (a dashed reference line, distinct from target curves),
-  //     never a scheduling candidate so it never reaches OBSERVATION PLAN
-  //     or EXPOSURE TIMELINE (see moonAltValues in computeAll()). ---
+  // --- Moon altitude curve (dashed reference line, above the horizon) ---
   const moonSegments = altitudeSegments(state.moonAltValues);
   const moonSelected = selectedTargetId === 'MOON';
   const moonDim = selectedTargetId !== null && !moonSelected;
-  // Always its own distinct color — never falls back to the shared --muted
-  // gray dimmed targets use, or it becomes indistinguishable from them
-  // during a selection (only opacity is reduced, not the color itself).
+  // Always in its own color (--moon), also when dimmed during a selection,
+  // so it never looks like a dimmed (--muted) target curve
   for (const seg of moonSegments) {
     const pts = seg.map(i => `${scaleX(state.timeGridJd[i]).toFixed(1)},${scaleY(state.moonAltValues[i]).toFixed(1)}`).join(' ');
     svg.appendChild(svgEl('polyline', {points:pts, fill:'none', stroke:moonColor, 'stroke-width':moonSelected?2.6:1.8, 'stroke-dasharray':'5,3', 'stroke-opacity':moonDim?0.55:1}));
@@ -3315,11 +3442,13 @@ function render(state, silent) {
     state.schedule.filter((s) => !s.belowLimit).forEach((s) => {
       const p = state.plotted.find(x => x.id === s.id);
       if (!p) return;
-      const segPts = [];
-      for (let i=0;i<state.timeGridJd.length;i++) {
-        const jd = state.timeGridJd[i];
-        if (jd >= s.start && jd <= s.end && p.altValues[i] >= 0) segPts.push(`${scaleX(jd).toFixed(1)},${scaleY(p.altValues[i]).toFixed(1)}`);
-      }
+      // The block's two ends (interpolated) plus every grid point between
+      // them, so that a block shorter than the grid step (~4 min) is drawn too
+      const blockJds = [s.start, ...state.timeGridJd.filter((jd) => jd > s.start && jd < s.end), s.end];
+      const segPts = blockJds
+        .map((jd) => [jd, interp(jd, state.timeGridJd, p.altValues)])
+        .filter(([, alt]) => alt >= 0)
+        .map(([jd, alt]) => `${scaleX(jd).toFixed(1)},${scaleY(alt).toFixed(1)}`);
       const dim = selectedTargetId !== null && !isSelectedTarget(s.id);
       const segColor = dim ? muted : s.color;
       const seg = svgEl('polyline', {points:segPts.join(' '), fill:'none', stroke:segColor, 'stroke-width':4.5, 'stroke-linecap':'round', 'stroke-opacity':dim?0.5:1});
@@ -3343,9 +3472,8 @@ function render(state, silent) {
   svg.appendChild(svgEl('line', {id:'now-line-plot', x1:-9999, x2:-9999, y1:mainTop, y2:mainBottom, stroke:'var(--error)', 'stroke-width':1.3, 'stroke-dasharray':'3,2'}));
 
   // --- hover crosshair + time tooltip ---
-  // Crosshair and tooltip are driven by mousemove/mouseleave on the SVG
-  // element itself (not an overlay rect), so the transparent hit polylines
-  // that handle curve-click/selection still receive their own pointer events.
+  // Driven by mousemove/mouseleave on the <svg> itself (not an overlay
+  // rect), so the curves' hit polylines still receive their clicks.
   const crosshairLine = svgEl('line', {id:'plot-crosshair', x1:-9999, x2:-9999, y1:mainTop, y2:mainBottom, stroke:muted, 'stroke-width':1, 'stroke-dasharray':'3,3', 'pointer-events':'none'});
   svg.appendChild(crosshairLine);
 
@@ -3356,10 +3484,10 @@ function render(state, silent) {
   ttGroup.appendChild(ttText);
   svg.appendChild(ttGroup);
 
-  // Listen on the SVG itself — mousemove bubbles up from every child
-  // (curves, hit-polylines, labels…) so we always get the position,
-  // while children keep their own pointer-events for click handling.
-  svg.addEventListener('mousemove', (e) => {
+  // Assigned as on* properties, not with addEventListener: the <svg> element
+  // is reused by every render(), so each render replaces the handlers
+  // instead of adding another pair
+  svg.onmousemove = (e) => {
     const svgRect = svg.getBoundingClientRect();
     const svgW = parseFloat(svg.getAttribute('width')) || W;
     const svgX = (e.clientX - svgRect.left) * (svgW / svgRect.width);
@@ -3371,10 +3499,7 @@ function render(state, silent) {
     }
     const px = svgX;
     const jd = t0 + (px - ML) / (W - ML - MR) * (t1 - t0);
-    const d = new Date((jd - 2440587.5) * 86400000);
-    const hh = String(d.getUTCHours()).padStart(2,'0');
-    const mm2 = String(d.getUTCMinutes()).padStart(2,'0');
-    const label = `${hh}:${mm2} UT`;
+    const label = `${fmtHM(jdToDate(jd))} UT`;
     crosshairLine.setAttribute('x1', px.toFixed(1));
     crosshairLine.setAttribute('x2', px.toFixed(1));
     ttText.textContent = label;
@@ -3390,11 +3515,11 @@ function render(state, silent) {
     ttText.setAttribute('x', tx + PAD_X);
     ttText.setAttribute('y', ty + PAD_Y + th * 0.82);
     ttGroup.setAttribute('visibility', 'visible');
-  });
-  svg.addEventListener('mouseleave', () => {
+  };
+  svg.onmouseleave = () => {
     crosshairLine.setAttribute('x1', -9999); crosshairLine.setAttribute('x2', -9999);
     ttGroup.setAttribute('visibility', 'hidden');
-  });
+  };
 
   // --- legend ---
   const legendBox = document.getElementById('legend-box');
@@ -3403,17 +3528,14 @@ function render(state, silent) {
   visiblePlotted.forEach((p) => {
     const item = document.createElement('div');
     item.className = 'item' + (isSelectedTarget(p.id) ? ' legend-selected' : (selectedTargetId !== null ? ' legend-dimmed' : ''));
-    item.innerHTML = `<span class="swatch" style="background:${p.color}"></span>${p.name}`;
+    item.innerHTML = `<span class="swatch" style="background:${escapeHtml(p.color)}"></span>${escapeHtml(p.name)}`;
     item.addEventListener('click', () => toggleSelectedTarget(p.id));
     legend.appendChild(item);
   });
   if (moonSegments.length) {
     const item = document.createElement('div');
-    // The Moon is never a real target (no row in any other box — see
-    // getAllTrackedTargets()), so selecting it only highlights it here and
-    // in its own curve on the plot; it never dims/highlights anything in
-    // OBSERVATION PLAN/TIMELINE or the Gantt charts — see the
-    // selectionAffectsBoxes() guard used by those.
+    // The Moon has no row in any table or timeline, so selecting it only
+    // highlights its legend item and curve (see selectionAffectsBoxes()).
     item.className = 'item' + (selectedTargetId === 'MOON' ? ' legend-selected' : (selectedTargetId !== null ? ' legend-dimmed' : ''));
     item.innerHTML = `<span class="swatch" style="background:${moonColor}"></span>Moon`;
     item.addEventListener('click', () => toggleSelectedTarget('MOON'));
@@ -3421,12 +3543,9 @@ function render(state, silent) {
   }
   legendBox.style.display = (visiblePlotted.length || moonSegments.length) ? 'block' : 'none';
 
-  // --- observation plan / observation timeline tables (tabbed, one box) ---
-  // Sized FIRST, independent of every other box (see syncObsBoxHeight()) —
-  // TARGETS (left column) and LOG (bottom of this column) both then size
-  // themselves to match wherever this ends up, and EXPOSURE/OBSERVING
-  // TIMELINE below still caps against LOG's own (now newly-set) bottom
-  // edge — so this order (plan -> log -> gantt -> targets) matters.
+  // --- OBSERVATION PLAN / LOGBOOK tables (two tabs of one box) ---
+  // Sized first (see syncObsBoxHeight()): LOG and TARGETS then match its
+  // bottom edge, so the order plan -> log -> timelines -> targets matters.
   document.getElementById('schedule-box').style.display = hasSchedule ? 'block' : 'none';
   renderObservationPlanTable(state);
   renderObservationTimelineTable(state);
@@ -3438,17 +3557,13 @@ function render(state, silent) {
   document.getElementById('gantt-box').style.display = (hasExpTimeline || hasObservingTimeline) ? 'block' : 'none';
   syncGanttBoxHeight();
 
-  // Cards for targets that made it into the plan are hidden from the
-  // editable TARGETS box (see syncPlannedTargetCards()'s own comment) —
-  // done before syncTargetsBoxHeight() so that box measures the list with
-  // its final, post-hide set of visible cards.
+  // Hide the cards of planned targets before measuring the TARGETS list
   syncPlannedTargetCards(state.schedule);
   syncTargetsBoxHeight();
 
-  // --- moon info of the plotted night, logged as a note (illumination at the
-  // local midnight; rise/set only if they happen during the night) ---
-  // Only logged on the initial Plot/Schedule call, not on internal re-renders
-  // triggered by selection changes (toggleSelectedTarget → render(lastPlot, true)).
+  // --- Moon of the plotted night, logged (illumination at local midnight;
+  // rise/set only if they happen during the night). Not on silent
+  // re-renders (selection, resize...). ---
   if (state.moon && !silent) {
     const pct = Math.round(state.moon.fraction*100);
     let msg = `Moon illumination: ~${pct}%.`;
@@ -3459,10 +3574,8 @@ function render(state, silent) {
   updateNowLines();
 }
 
-// Each box's own "Max rows" control, in its own box-head (top-right corner)
-// — shared between that box's two tabs (Plan/Timeline, or Exposure/Observing
-// Timeline), but independent of the OTHER box's own control. Falls back to
-// 10 for anything not a positive integer (blank, 0, negative, non-numeric).
+// "Max rows" of each two-tab box (shared by its two tabs); 10 if the field is
+// not a positive integer.
 function getMaxRowsObs() {
   const raw = parseInt(document.getElementById('inp-max-rows-obs').value, 10);
   return Number.isFinite(raw) && raw > 0 ? raw : 10;
@@ -3472,25 +3585,17 @@ function getMaxRowsGantt() {
   return Number.isFinite(raw) && raw > 0 ? raw : 10;
 }
 
-// OBSERVATION PLAN/TIMELINE is the one box that sizes itself independently
-// of everything else (see the comment in render() on why) — both tabs get
-// the SAME height (so switching tabs never visibly resizes the box) equal
-// to whichever tab's content is taller, auto-fitting tightly up to at most
-// getMaxRowsObs() rows (deliberately NOT tied to any other box, to avoid a
-// circular dependency — TARGETS and LOG both size themselves to match this
-// box's own result, see syncTargetsBoxHeight()/syncLogBoxHeight()). Past
-// that max, the wrap scrolls internally (overflow-y:auto; the sticky
-// <thead> — see its own CSS — stays visible while it does) instead of
-// growing the box further.
+// Height of OBSERVATION PLAN/LOGBOOK: both tabs get the same height (the
+// taller content), up to getMaxRowsObs() rows; beyond that the table scrolls
+// under its sticky header. It depends on no other box (TARGETS and LOG
+// follow it, see syncTargetsBoxHeight()/syncLogBoxHeight()).
 function syncObsBoxHeight() {
   const planWrap = document.getElementById('schedule-wrap');
   const timelineWrap = document.getElementById('timeline-wrap');
   const wasPlanHidden = planWrap.classList.contains('hidden');
   const wasTimelineHidden = timelineWrap.classList.contains('hidden');
-  // Clearing style.height below makes the wrap fit its content (briefly not
-  // scrollable), which zeroes its scrollTop — save it first and restore it
-  // once the real height is back, so re-render (e.g. clicking a row to
-  // select/highlight it) never yanks an already-scrolled box back to the top.
+  // Clearing the height to measure the content resets the scroll position:
+  // save it and restore it afterwards, so a re-render keeps the scroll
   const planScrollTop = planWrap.scrollTop;
   const timelineScrollTop = timelineWrap.scrollTop;
   planWrap.style.height = '';
@@ -3499,9 +3604,7 @@ function syncObsBoxHeight() {
   timelineWrap.classList.remove('hidden');
 
   const naturalH = Math.max(planWrap.offsetHeight, timelineWrap.offsetHeight);
-  // Measured from whichever table actually has rows right now, so the cap
-  // reflects this table's real row height (font size, padding) rather than
-  // a guessed constant.
+  // Row and header heights measured on the rendered table
   const sampleTable = planWrap.querySelector('table.sched') || timelineWrap.querySelector('table.sched');
   const theadH = sampleTable ? (sampleTable.querySelector('thead')?.offsetHeight || 0) : 0;
   const rowH = sampleTable ? (sampleTable.querySelector('tbody tr')?.offsetHeight || 28) : 28;
@@ -3517,23 +3620,15 @@ function syncObsBoxHeight() {
   planWrap.classList.toggle('hidden', wasPlanHidden);
   timelineWrap.classList.toggle('hidden', wasTimelineHidden);
 }
-// Same "at most getMaxRowsGantt() rows, then scroll" idea as syncObsBoxHeight()
-// above, for EXPOSURE TIMELINE/OBSERVING TIMELINE — using the same
-// MT/rowH/MB constants renderGantt()/renderObservingGantt() themselves lay
-// rows out with (MT before the first row, MB for the bottom time axis).
-// Both tabs get the SAME height (so switching tabs never visibly resizes
-// the box); only one wrap is visible at a time (see switchExpTab()), but
-// the cap applies equally to both.
+// Same as syncObsBoxHeight() for EXPOSURE/OBSERVING TIMELINE, up to
+// getMaxRowsGantt() rows (row layout: GANTT_MT/GANTT_ROW_H/GANTT_MB).
 function syncGanttBoxHeight() {
   if (document.getElementById('gantt-box').style.display === 'none') return;
   const ganttWrap = document.getElementById('gantt-wrap');
   const obsGanttWrap = document.getElementById('obs-gantt-wrap');
   const wasGanttHidden = ganttWrap.classList.contains('hidden');
   const wasObsHidden = obsGanttWrap.classList.contains('hidden');
-  // See syncObsBoxHeight()'s own comment: clearing style.height briefly makes
-  // the wrap non-scrollable, which zeroes its scrollTop — save/restore it so
-  // a re-render (e.g. clicking a bar to select/highlight it) doesn't snap an
-  // already-scrolled box back to the top.
+  // Scroll positions saved and restored, as in syncObsBoxHeight()
   const ganttScrollTop = ganttWrap.scrollTop;
   const obsGanttScrollTop = obsGanttWrap.scrollTop;
   ganttWrap.style.height = '';
@@ -3542,8 +3637,7 @@ function syncGanttBoxHeight() {
   obsGanttWrap.classList.remove('hidden');
 
   const naturalH = Math.max(ganttWrap.offsetHeight, obsGanttWrap.offsetHeight);
-  const GANTT_MT = 12, GANTT_ROWH = 24, GANTT_MB = 44; // must match renderGantt()/renderObservingGantt()
-  const capH = GANTT_MT + GANTT_ROWH * getMaxRowsGantt() + GANTT_MB;
+  const capH = GANTT_MT + GANTT_ROW_H * getMaxRowsGantt() + GANTT_MB;
   const finalH = Math.min(naturalH, capH);
   ganttWrap.style.height = finalH + 'px';
   obsGanttWrap.style.height = finalH + 'px';
@@ -3555,7 +3649,7 @@ function syncGanttBoxHeight() {
   ganttWrap.classList.toggle('hidden', wasGanttHidden);
   obsGanttWrap.classList.toggle('hidden', wasObsHidden);
 }
-// Which of the two tabs (schedule-box's own box-head) is currently shown.
+// Active tab of the OBSERVATION PLAN/LOGBOOK box.
 let activeObsTab = 'plan';
 function switchObsTab(tab) {
   activeObsTab = tab;
@@ -3567,7 +3661,7 @@ function switchObsTab(tab) {
 document.getElementById('tab-plan').addEventListener('click', () => switchObsTab('plan'));
 document.getElementById('tab-timeline').addEventListener('click', () => switchObsTab('timeline'));
 
-// Same tab pattern, for the EXPOSURE TIMELINE box's two tabs.
+// Active tab of the EXPOSURE/OBSERVING TIMELINE box.
 let activeExpTab = 'plan';
 function switchExpTab(tab) {
   activeExpTab = tab;
@@ -3583,18 +3677,16 @@ function switchExpTab(tab) {
 document.getElementById('tab-exp-plan').addEventListener('click', () => switchExpTab('plan'));
 document.getElementById('tab-exp-observing').addEventListener('click', () => switchExpTab('observing'));
 
-// OBSERVATION PLAN: the scheduler's own output, read-only (no reordering —
-// see buildSchedule()'s own comment on why: this table always reflects
-// whichever placement strategy actually won, not a user override).
+// OBSERVATION PLAN table: the scheduler's result, read-only (it cannot be
+// reordered; see buildSchedule()).
 function renderObservationPlanTable(state) {
   const schedTable = document.getElementById('schedule-table');
   if (!(state.schedule && state.schedule.length)) { schedTable.innerHTML = ''; return; }
   let html = '<thead><tr><th></th><th>#</th><th>Target</th><th>Coordinates</th><th>Priority</th><th>Start</th><th>End</th><th>Nº exp.</th><th>Exp. [s]</th><th>Overhead [s]</th><th>Min Alt [º]</th><th>Init Alt [º]</th><th>Mean Alt [º]</th><th>Max Alt [º]</th><th>Moon Dist [º]</th></tr></thead><tbody>';
   state.schedule.forEach((s) => {
-    if (!scheduleNotes[s.id]) scheduleNotes[s.id] = newScheduleNote(); // Observation Timeline needs this too
-    // Mean Moon distance across THIS target's planned block (not the real
-    // observation — that's Observation Timeline's job), computed once here
-    // rather than ticking live, since a plan is static until re-run.
+    if (!scheduleNotes[s.id]) scheduleNotes[s.id] = newScheduleNote(); // The LOGBOOK reads it too
+    // Mean Moon distance over the planned block (static until the next plan;
+    // the LOGBOOK shows the live distance)
     const moonDistMean = moonDistMeanInBlock(state.observer, s.ra_h, s.dec_d, s.start, s.end);
     const rowCls = [s.belowLimit ? 'row-below-limit' : '', isSelectedTarget(s.id) ? 'row-selected' : (selectionAffectsBoxes() ? 'row-dimmed' : '')].filter(Boolean).join(' ');
     const belowLimitTitle = s.notScheduledReason === 'overlap'
@@ -3605,7 +3697,7 @@ function renderObservationPlanTable(state) {
     html += `<tr data-id="${s.id}"${rowCls ? ` class="${rowCls}"` : ''}${s.belowLimit ? ` title="${belowLimitTitle}"` : ''}>
       <td class="row-delete-cell"><button type="button" class="row-delete" data-id="${s.id}" title="Remove this target">✕</button></td>
       <td>${s.order}</td>
-      <td>${s.name}</td>
+      <td>${escapeHtml(s.name)}</td>
       <td>${fmtCoords(s.ra_h, s.dec_d)}</td>
       <td>${s.priority ?? '-'}</td>
       <td>${fmtHM(jdToDate(s.start))}</td>
@@ -3630,12 +3722,10 @@ function renderObservationPlanTable(state) {
   });
 }
 
-// OBSERVATION TIMELINE: tracks the actual observing session — Observed
-// status, real start/end click times, seeing and Moon distance at those
-// moments. Its own row order (timelineOrder) is independent of, and never
-// feeds back into, the scheduler or OBSERVATION PLAN's order; rows already
-// "finished" are locked in place (can't be dragged) since re-ordering
-// something already observed wouldn't mean anything.
+// LOGBOOK table: the record of the observing session (status, real start/end
+// times, phase, seeing, airmass, live Moon distance and comments). Its row
+// order (timelineOrder) is independent of the plan; "finished" rows are
+// locked in place.
 function renderObservationTimelineTable(state) {
   const timelineTable = document.getElementById('timeline-table');
   const tracked = getAllTrackedTargets(state);
@@ -3655,15 +3745,21 @@ function renderObservationTimelineTable(state) {
   let html = '<thead><tr><th></th><th>#</th><th>In Plan</th><th>Target</th><th>Coordinates</th><th>Priority</th><th>Observed</th><th>Time Observation</th><th>Obs. Phase</th><th>Seeing</th><th>Airmass</th><th>Moon Dist [º]</th><th>Comments</th></tr></thead><tbody>';
   rows.forEach((s, i) => {
     const note = scheduleNotes[s.id] || (scheduleNotes[s.id] = newScheduleNote());
-    // Explains an unscheduled target here too (see OBSERVATION PLAN's red
-    // row) — only when the user hasn't written their own comment, so this
-    // never clobbers something they typed.
-    if (s.belowLimit && !note.comment) {
+    // Automatic comment explaining why an unscheduled target is not in the
+    // plan. It follows the current plan (updated, or cleared once the target
+    // is scheduled), but never replaces a comment written by the user.
+    if (s.belowLimit && (!note.comment || note.autoComment)) {
       note.comment = s.notScheduledReason === 'overlap'
         ? 'Could not fit into the night without overlapping other targets.'
         : s.notScheduledReason === 'window'
           ? 'Only visible outside the chosen scheduling start/end window.'
-          : `Could not be scheduled: dips below the ${s.minAltConstraint}° altitude limit.`;
+          : s.notScheduledReason === 'never'
+            ? `Never reaches its ${s.minAltConstraint}° altitude limit tonight.`
+            : `Could not be scheduled: dips below the ${s.minAltConstraint}° altitude limit.`;
+      note.autoComment = true;
+    } else if (!s.belowLimit && note.autoComment) {
+      note.comment = '';
+      note.autoComment = false;
     }
     const locked = note.status === 'finished';
     const inPlanBadge = s.inPlan
@@ -3672,22 +3768,20 @@ function renderObservationTimelineTable(state) {
         ? '<span class="tl-inplan no" title="Not in the observation plan — could not be scheduled, but can still be observed">✕</span>'
         : '<span class="tl-inplan no" title="Not in the observation plan — cannot be observed">✕</span>';
     const tlRowCls = isSelectedTarget(s.id) ? 'row-selected' : (selectionAffectsBoxes() ? 'row-dimmed' : '');
-    // Periodic-ephemeris info (period, epoch and time scale), if any, comes from state.plotted
-    // — OBSERVATION TIMELINE's own tracked-target objects (from
-    // getAllTrackedTargets()) don't carry it themselves.
+    // The ephemeris (periodic targets) is only stored in state.plotted
     const plottedEntry = (state.plotted || []).find((p) => String(p.id) === String(s.id));
     const ephemeris = plottedEntry ? plottedEntry.ephemeris : null;
     html += `<tr data-id="${s.id}"${tlRowCls ? ` class="${tlRowCls}"` : ''}>
       <td class="row-drag${locked?' is-locked':''}" ${locked?'':'draggable="true"'} data-id="${s.id}" title="${locked?'Locked — already observed':'Drag to reorder'}">⠿</td>
       <td>${i+1}</td>
       <td>${inPlanBadge}</td>
-      <td>${s.name}</td>
+      <td>${escapeHtml(s.name)}</td>
       <td>${fmtCoords(s.ra_h, s.dec_d)}</td>
       <td>${s.priority ?? '-'}</td>
       <td><button type="button" class="obs-btn" data-id="${s.id}"></button></td>
       <td class="obs-timeobs" data-id="${s.id}">${formatTimeObservationRange(note)}</td>
       <td class="obs-phase" data-id="${s.id}">${formatObsPhaseRange(note, ephemeris)}</td>
-      <td class="obs-seeing" data-id="${s.id}">${formatSeeingRange(note)}</td>
+      <td class="obs-seeing" data-id="${s.id}">${escapeHtml(formatSeeingRange(note))}</td>
       <td class="obs-airmass" data-id="${s.id}">${formatAirmassRange(note, state.observer, s.ra_h, s.dec_d)}</td>
       <td><span class="tl-moon-current" data-id="${s.id}" data-ra="${s.ra_h}" data-dec="${s.dec_d}" data-name="${escapeHtml(s.name)}">-</span></td>
       <td><input type="text" class="obs-comment" data-id="${s.id}" placeholder="Notes…" value="${escapeHtml(note.comment)}"></td>
@@ -3700,25 +3794,17 @@ function renderObservationTimelineTable(state) {
     const note = scheduleNotes[btn.dataset.id];
     const s = byId.get(String(btn.dataset.id));
     renderObsButton(btn, note);
-    // A target manually removed from the plan can't *start* a new
-    // observation — but if it was already "started" before being excluded,
-    // it can still be finished (see removeTargetFromPlan()'s own "finished"
-    // guard on why that state can't arise the other way around). A
-    // belowLimit target (compromised placement, or never reaching its own
-    // altitude requirement at all — see getAllTrackedTargets()) is NOT
-    // excluded in that sense: it's still observable, it just never got a
-    // real slot in the schedule, so it won't show a bar in EXPOSURE
-    // TIMELINE — only in OBSERVING TIMELINE once actually observed.
+    // A target removed from the plan cannot start a new observation (one
+    // already started can still be finished). An unscheduled (belowLimit)
+    // target can: it has no planned block, but it is still observable.
     if (s && !s.inPlan && !s.belowLimit && note.status === 'none') {
       btn.disabled = true;
       btn.title = 'Not in the observation plan — cannot be observed.';
     }
     btn.addEventListener('click', async () => {
-      // Not observed -> Observing (started) -> Observed (finished) -> back
-      // to Not observed. Seeing is captured fresh (forced past the cache —
-      // this timestamp matters scientifically) at the moment of each click
-      // — fetchWeatherNow() also refreshes the WEATHER box itself to match
-      // what was just captured.
+      // Not observed -> Observing (started) -> Observed (finished) -> Not
+      // observed. The seeing is read fresh (bypassing the server cache) at
+      // the start and end clicks; this also refreshes the WEATHER box.
       const isReset = note.status === 'finished';
       if (!isReset) {
         btn.disabled = true;
@@ -3732,20 +3818,20 @@ function renderObservationTimelineTable(state) {
         note.startedAt = new Date();
         note.seeingStart = seeingNow;
         note.seeingSamples = [];
-        // Begin sampling lastWeatherSeeing every 30 s (no extra HTTP fetch).
+        // Sample the seeing every SEEING_SAMPLE_MS while observing
         startSeeingSamplerIfNeeded();
         log(`'${s ? s.name : btn.dataset.id}': observation started at ${fmtDateTimeUTC(note.startedAt)}.`, 'info');
       } else if (note.status === 'started') {
         note.status = 'finished';
         note.finishedAt = new Date();
         note.seeingEnd = seeingNow;
-        // Capture one last sample at the end click before the sampler stops.
+        // One last sample at the end click
         const finalVal = parseSeeingNum(seeingNow);
         if (finalVal !== null) note.seeingSamples.push(finalVal);
-        // Sampler will stop itself on the next tick (no observing targets left).
+        // The sampler stops by itself once no target is being observed
         log(`'${s ? s.name : btn.dataset.id}': observation finished at ${fmtDateTimeUTC(note.finishedAt)}.`, 'info');
       } else {
-        // Reset to Not observed: clear everything including samples.
+        // Back to Not observed: clear the record, samples included
         note.status = 'none';
         note.startedAt = null; note.finishedAt = null;
         note.seeingStart = null; note.seeingEnd = null;
@@ -3765,6 +3851,7 @@ function renderObservationTimelineTable(state) {
         if (nowLocked) handle.removeAttribute('draggable'); else handle.setAttribute('draggable', 'true');
         handle.title = nowLocked ? 'Locked — already observed' : 'Drag to reorder';
       }
+      refreshObservingTimeline(state);
       saveToLocalStorage();
     });
   });
@@ -3773,18 +3860,21 @@ function renderObservationTimelineTable(state) {
     inp.addEventListener('input', (e) => {
       const note = scheduleNotes[e.target.dataset.id] || (scheduleNotes[e.target.dataset.id] = newScheduleNote());
       note.comment = e.target.value;
+      note.autoComment = false;  // Written by the user: never replaced automatically
     });
   });
 
-  // --- drag-to-reorder (Timeline only; "finished" rows aren't draggable) ---
+  // --- drag-to-reorder (LOGBOOK only; "finished" rows aren't draggable) ---
   const tbody = timelineTable.querySelector('tbody');
+  const currentRowOrder = () => Array.from(tbody.querySelectorAll('tr')).map((r) => r.dataset.id);
   let dragSrcRow = null;
+  let orderBeforeDrag = null;
   timelineTable.querySelectorAll('.row-drag[draggable="true"]').forEach((handle) => {
     handle.addEventListener('dragstart', (e) => {
-      // Snapshotted here (before the reorder), not at dragend — by dragend
-      // the DOM/timelineOrder already reflect the NEW order, too late for
-      // an "undo the drag" snapshot to capture the old one.
+      // Undo snapshot taken before the rows move (at dragend they already
+      // show the new order); dropped again if the order does not change
       pushPlanUndoSnapshot();
+      orderBeforeDrag = currentRowOrder();
       dragSrcRow = handle.closest('tr');
       dragSrcRow.classList.add('drag-over-row');
       e.dataTransfer.effectAllowed = 'move';
@@ -3794,9 +3884,16 @@ function renderObservationTimelineTable(state) {
       if (!dragSrcRow) return;
       dragSrcRow.classList.remove('drag-over-row');
       dragSrcRow = null;
-      // Only Timeline's own display order changes — the astronomy/schedule
-      // is untouched, so re-rendering just this table is enough.
-      timelineOrder = Array.from(tbody.querySelectorAll('tr')).map((r) => r.dataset.id);
+      const newOrder = currentRowOrder();
+      if (orderBeforeDrag && newOrder.join('|') === orderBeforeDrag.join('|')) {
+        // Dropped where it was: nothing to undo
+        planUndoStack.pop();
+        updateUndoButtonState();
+        return;
+      }
+      // Only the LOGBOOK's display order changes (not the plan), so only this
+      // table is re-rendered
+      timelineOrder = newOrder;
       if (lastPlot) renderObservationTimelineTable(lastPlot);
       saveToLocalStorage();
     });
@@ -3816,10 +3913,9 @@ function renderObservationTimelineTable(state) {
   });
 }
 
-// Reverts the plot/exposure-timeline/observation-plan boxes to their
-// pre-"Plot targets" appearance — used whenever the target list becomes
-// empty (Clear all, Delete all, or removing the last remaining target from
-// the plan), where there is nothing left to (re-)compute or render.
+// Returns the plot, timelines and plan boxes to their initial (empty) look,
+// when no target is left (Clear All, Delete all, or removing the last target
+// from the plan).
 function resetPlotDisplay() {
   lastPlot = null;
   document.getElementById('plot-svg').style.display = 'none';
@@ -3828,20 +3924,25 @@ function resetPlotDisplay() {
   document.getElementById('legend-box').style.display = 'none';
   document.getElementById('gantt-box').style.display = 'none';
   document.getElementById('gantt-svg').innerHTML = '';
+  document.getElementById('obs-gantt-svg').innerHTML = '';
   document.getElementById('schedule-box').style.display = 'none';
 }
-// Given the OBSERVATION PLAN's just-recomputed schedule, rewrites
-// timelineOrder so already-"finished" targets keep the exact slot they
-// occupied, while every other slot is refilled in the Plan's (possibly now
-// reordered) chronological order — i.e. "the rest reorder to match the
-// plan; observed targets never move". Only meaningful once the user has
-// manually dragged OBSERVATION TIMELINE at least once (timelineOrder set):
-// before that, its render already falls back to the Plan's own order
-// directly, which already has this exact property.
+// Redraws OBSERVING TIMELINE after an observation starts, finishes or is
+// reset, and shows/hides the timelines box to match its two tabs.
+function refreshObservingTimeline(state) {
+  const hasObserving = renderObservingGantt(state);
+  const hasExposure = document.getElementById('gantt-svg').childElementCount > 0;
+  document.getElementById('gantt-box').style.display = (hasExposure || hasObserving) ? 'block' : 'none';
+  syncGanttBoxHeight();
+}
+// After a re-plan, rewrites a hand-made LOGBOOK order (timelineOrder): the
+// observed targets and those removed from the plan keep their slots, and
+// the other slots are refilled in the new plan's order. Not needed while
+// timelineOrder is null (the LOGBOOK then follows the plan).
 function resyncTimelineOrderAfterPlanChange(newSchedule) {
   const planIds = newSchedule.map((s) => String(s.id));
   // Finished targets and ones excluded from the plan both keep their exact
-  // Timeline slot; only the still-schedulable, not-yet-observed targets get
+  // LOGBOOK slot; only the still-schedulable, not-yet-observed targets get
   // refilled into their remaining slots, in the plan's new order.
   const keepInPlace = (id) => (scheduleNotes[id] && scheduleNotes[id].status === 'finished') || excludedFromPlan.has(String(id));
   const relevantIds = new Set([...planIds, ...excludedFromPlan]);
@@ -3852,23 +3953,11 @@ function resyncTimelineOrderAfterPlanChange(newSchedule) {
   let ri = 0;
   timelineOrder = base.map((id) => (keepInPlace(id) ? id : remainingInPlanOrder[ri++]));
 }
-// Removes one target (by id) straight from the OBSERVATION PLAN table's own
-// delete button. Refuses for a target already marked "finished" in
-// OBSERVATION TIMELINE — an observation that already happened can't be
-// un-scheduled. Otherwise, the target's card is removed (it drops out of
-// the plan/plot/candidates entirely, same as before), but — unlike before —
-// it is NOT erased from OBSERVATION TIMELINE: it stays there, pushed to the
-// end, flagged "not in plan" (see the In Plan column), since a session's
-// observing record shouldn't vanish just because the target stopped being
-// planned for. A target not in the plan can't be *newly* started (see
-// renderObservationTimelineTable()'s own guard on the Observed button).
-// Undo for OBSERVATION PLAN/TIMELINE's own structural actions (removing one
-// target, "Delete all", reordering the Timeline by drag) — NOT for the
-// Observed button's start/finish clicks, which record when something was
-// actually observed and shouldn't be silently rewound. Snapshot-based (the
-// full session state, reusing buildSessionData()/applySessionData() rather
-// than a bespoke per-field diff) — pushed right BEFORE each of those
-// actions runs, so "Undo" restores exactly how things were just before it.
+// Undo for the structural actions of OBSERVATION PLAN/LOGBOOK (removing a
+// target, "Delete all", reordering the LOGBOOK), not for the start/end
+// clicks of an observation, which record what actually happened. Each action
+// pushes a full session snapshot (buildSessionData()) just before running;
+// Undo restores it with applySessionData().
 let planUndoStack = [];
 const PLAN_UNDO_MAX = 20;
 function pushPlanUndoSnapshot() {
@@ -3885,10 +3974,15 @@ function undoPlanAction() {
   applySessionData(snapshot);
   updateUndoButtonState();
   saveToLocalStorage();
-  log('Undid the last observation plan/timeline change.', 'info');
+  log('Undid the last observation plan/logbook change.', 'info');
 }
 document.getElementById('btn-undo-plan').addEventListener('click', undoPlanAction);
 
+// Removes a target from the plan (delete button of the OBSERVATION PLAN).
+// Refused for a target already observed. Its card is removed, so it leaves
+// the plan and the plot, but it stays in the LOGBOOK, at the end and marked
+// "not in plan", so the session record is kept; it can no longer be
+// started there (see renderObservationTimelineTable()).
 function removeTargetFromPlan(id) {
   const note = scheduleNotes[id];
   if (note && note.status === 'finished') {
@@ -3906,7 +4000,7 @@ function removeTargetFromPlan(id) {
   excludedFromPlan.add(String(id));
   if (card) card.remove();
   if (timelineOrder) {
-    // Always ends up at the very end of Timeline's current order, even if
+    // Always ends up at the very end of the LOGBOOK's current order, even if
     // it previously sat somewhere else in a manually-dragged arrangement.
     timelineOrder = timelineOrder.filter((x) => x !== id);
     timelineOrder.push(String(id));
@@ -3915,22 +4009,17 @@ function removeTargetFromPlan(id) {
   if (document.querySelector('.target-card')) {
     const state = computeAll(true);
     if (state) {
-      // Already-observed targets keep their exact scheduled placement (see
-      // computeAll()'s own "pinned" handling) — this just keeps OBSERVATION
-      // TIMELINE's manually-dragged row order (if any) in sync with that.
+      // Observed targets keep their placement (see computeAll()); this keeps a
+      // hand-made LOGBOOK order in step with the new plan
       if (timelineOrder) resyncTimelineOrderAfterPlanChange(state.schedule);
       render(state, true);
     }
   } else {
-    // No real targets left to plan/plot, but Timeline may still have
-    // excluded ones to show — keep that box up rather than fully resetting.
+    // No target left to plan or plot, but the LOGBOOK may still list removed
+    // ones: keep that box. The placeholder state has no night (t0jd = t1jd)
+    // and no observer, which the timeline and airmass code check for.
+    resetPlotDisplay();
     lastPlot = { schedule: [], observer: null, t0jd: 0, t1jd: 0, moon: null };
-    document.getElementById('plot-svg').style.display = 'none';
-    document.getElementById('plot-svg').innerHTML = '';
-    document.getElementById('empty-hint').style.display = 'block';
-    document.getElementById('legend-box').style.display = 'none';
-    document.getElementById('gantt-box').style.display = 'none';
-    document.getElementById('gantt-svg').innerHTML = '';
     if (excludedFromPlan.size) {
       document.getElementById('schedule-box').style.display = 'block';
       renderObservationPlanTable(lastPlot);
@@ -3945,13 +4034,9 @@ function removeTargetFromPlan(id) {
   saveToLocalStorage();
 }
 
-// Sizes the scrollable #targets-list so the left column's own bottom edge
-// (#main-actions — the Clear all/Plot targets/Plan observation row) lines
-// up with OBSERVATION PLAN/TIMELINE's bottom edge (right column) once a
-// plan exists — that box now sizes itself independently first (see
-// syncObsBoxHeight()) and everything else follows it — or, before a plan
-// exists, a fixed height of roughly two target rows so the box doesn't
-// grow arbitrarily tall with every added target.
+// Sizes the scrollable #targets-list: with a plan (wide layout), so that the
+// bottom of the left column (#main-actions) lines up with the bottom of
+// OBSERVATION PLAN/LOGBOOK; otherwise, about two target cards high.
 function syncTargetsBoxHeight() {
   const targetsList = document.getElementById('targets-list');
   const scheduleBox = document.getElementById('schedule-box');
@@ -3959,13 +4044,8 @@ function syncTargetsBoxHeight() {
 
   const mainActions = document.getElementById('main-actions');
   if (wide && scheduleBox && scheduleBox.style.display !== 'none' && mainActions) {
-    // Below the scrollable list itself, the left column still has: the rest
-    // of the TARGETS box (its "+ Add target"/Import/Export buttons and the
-    // box's own bottom padding), the Save/Load session row, and finally the
-    // Clear all/Plot targets/Plan observation row — it is *that* row's
-    // bottom edge that should line up with the plan's, not the TARGETS box
-    // itself. All of that trailing content's combined height is independent
-    // of the list's own height, so it is measured first and subtracted.
+    // Height of everything below the list (rest of the TARGETS box, session
+    // buttons, main buttons), which does not depend on the list itself
     const trailingH = mainActions.getBoundingClientRect().bottom - targetsList.getBoundingClientRect().bottom;
     const targetListBottom = scheduleBox.getBoundingClientRect().bottom - trailingH;
     const listTop = targetsList.getBoundingClientRect().top;
@@ -3973,18 +4053,15 @@ function syncTargetsBoxHeight() {
     return;
   }
 
-  // :not(.in-plan) — a hidden (already-planned) card has zero height and
-  // would otherwise collapse this fallback to a sliver.
+  // Measured on a visible card (a planned, hidden one has zero height)
   const card = targetsList.querySelector('.target-card:not(.in-plan)');
   const rowH = card ? card.getBoundingClientRect().height : 130;
   const gap = 8; // matches .target-card's own margin-bottom
   targetsList.style.maxHeight = Math.round(rowH * 2 + gap) + 'px';
 }
-// Sizes #log so the right column's own bottom edge (this is its last box)
-// lines up with OBSERVATION PLAN/TIMELINE's bottom edge too — same idea as
-// syncTargetsBoxHeight() above, just within the same column instead of
-// across two. Falls back to a fixed default before a plan exists (nothing
-// to match yet).
+// Sizes #log so the bottom of the right-hand column lines up with the bottom
+// of OBSERVATION PLAN/LOGBOOK (wide layout with a plan); otherwise a fixed
+// default height.
 function syncLogBoxHeight() {
   const logEl = document.getElementById('log');
   const scheduleBox = document.getElementById('schedule-box');
@@ -4000,49 +4077,95 @@ function syncLogBoxHeight() {
 }
 
 /* ======================================================================
-   RENDER GANTT (exposure timeline, in its own box — see TARGETS box comment
-   in render() above for why this was split out of the main altitude plot)
+   TIMELINES (EXPOSURE TIMELINE and OBSERVING TIMELINE: one row per target,
+   on the same time axis as the visibility plot)
    ====================================================================== */
-// Returns true if it actually drew anything — the EXPOSURE TIMELINE/
-// OBSERVING TIMELINE box (shared between this and renderObservingGantt) is
-// only shown when at least one of the two tabs has content; see render().
-function renderGantt(state) {
-  const svg = document.getElementById('gantt-svg');
-  // belowLimit entries (see placeInOrder()) aren't real exposures — they
-  // never appear here, only as a flagged row in OBSERVATION PLAN itself.
-  const rows = (state.schedule || []).filter((s) => !s.belowLimit);
-  const hasSchedule = rows.length > 0;
-
-  if (!hasSchedule) {
-    svg.innerHTML = '';
-    return false;
-  }
+// Sizes a timeline <svg> for `nRows` rows and returns its geometry: width W,
+// top and bottom of the rows (px) and the JD -> x scale, which is the same
+// as the visibility plot's (same width and margins, see chartWidth()).
+function setupTimelineSvg(svg, wrap, state, nRows) {
+  const W = chartWidth(wrap, state);
+  const rowsTop = GANTT_MT, rowsBottom = rowsTop + nRows * GANTT_ROW_H;
+  // The <svg> fits its rows; the box height cap is set on the wrap (see
+  // syncGanttBoxHeight())
+  const H = rowsBottom + GANTT_MB;
   svg.innerHTML = '';
-
-  // See the matching comment in render() above: the width tracks the actual
-  // wrapper size so the chart resizes dynamically while text stays constant.
-  const ganttWrap = document.getElementById('gantt-wrap');
-  const W = chartWidth(ganttWrap, state);
-  const ML = 120, MR = 60, MT = 12, MB = 44;
-  const rowH = 24;
-  const rowsTop = MT, rowsBottom = rowsTop + rows.length * rowH;
-  // Fits tightly to its own rows — the box's own max height (capped at the
-  // LOG box's bottom edge, with a scrollbar beyond that) is enforced
-  // separately, on the wrap itself; see syncGanttBoxHeight().
-  const H = rowsBottom + MB;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);
-
   const t0 = state.t0jd, t1 = state.t1jd;
-  const scaleX = (jd) => ML + (jd - t0) / (t1 - t0) * (W - ML - MR);
-
+  const scaleX = (jd) => CHART_ML + (jd - t0) / (t1 - t0) * (W - CHART_ML - CHART_MR);
+  return { W, rowsTop, rowsBottom, scaleX };
+}
+// Draws one row's background of a timeline: the selection highlight, the
+// transparent click target (selects the target) and the name label. The
+// elements drawn over the hit rect use pointer-events:none, otherwise a real
+// click on the name or the bar would not reach it. Returns the `dim` flag
+// (another target is selected).
+function drawTimelineRow(svg, geom, s, i) {
+  const y = geom.rowsTop + i * GANTT_ROW_H;
+  const sel = isSelectedTarget(s.id);
+  const dim = selectionAffectsBoxes() && !sel;
   const ink = getComputedStyle(document.body).getPropertyValue('--ink').trim() || '#222';
   const muted = getComputedStyle(document.body).getPropertyValue('--muted').trim() || '#888';
+  if (sel) svg.appendChild(svgEl('rect', {x:0, y:y, width:geom.W, height:GANTT_ROW_H, fill:'var(--accent)', 'fill-opacity':0.12}));
+  const hit = svgEl('rect', {class:'gantt-row-hit', x:0, y:y, width:geom.W, height:GANTT_ROW_H, fill:'transparent', 'data-id':s.id});
+  hit.addEventListener('click', () => toggleSelectedTarget(s.id));
+  svg.appendChild(hit);
+  const nameLbl = svgEl('text', {x:CHART_ML-8, y:y+GANTT_ROW_H/2+4, 'text-anchor':'end', 'font-size':12.5, fill:dim?muted:ink, 'pointer-events':'none'});
+  nameLbl.textContent = s.name;
+  svg.appendChild(nameLbl);
+  return dim;
+}
+// Draws what both timelines share around their rows: the top line, the row
+// dividers, the sunset/twilight/sunrise lines, the UT hour ticks (aligned
+// with the visibility plot) and the "now" line `nowLineId`, moved every
+// second by updateNowLines().
+function drawTimelineFrame(svg, geom, state, nRows, nowLineId) {
+  const { W, rowsTop, rowsBottom, scaleX } = geom;
+  const muted = getComputedStyle(document.body).getPropertyValue('--muted').trim() || '#888';
   const line = getComputedStyle(document.body).getPropertyValue('--line').trim() || '#ccc';
+  svg.appendChild(svgEl('line', {x1:CHART_ML, y1:rowsTop-4, x2:W-CHART_MR, y2:rowsTop-4, stroke:line}));
+  // One divider under each row, so the row (= click target) bounds are visible
+  for (let i = 1; i <= nRows; i++) {
+    const y = rowsTop + i * GANTT_ROW_H;
+    svg.appendChild(svgEl('line', {x1:CHART_ML, y1:y, x2:W-CHART_MR, y2:y, stroke:line, opacity:0.5}));
+  }
+  if (state.win) {
+    [state.win.sunset, state.win.twiEve, state.win.twiMorn, state.win.sunrise].forEach((t) => {
+      if (!t) return;
+      const x = scaleX(astroTimeToJd(t));
+      svg.appendChild(svgEl('line', {x1:x, y1:rowsTop-4, x2:x, y2:rowsBottom, stroke:muted, 'stroke-dasharray':'4,3', opacity:0.5, 'pointer-events':'none'}));
+    });
+  }
+  for (const hd of hourTicksBetween(state.t0jd, state.t1jd)) {
+    const x = scaleX(dateToJd(hd));
+    svg.appendChild(svgEl('line', {x1:x, y1:rowsBottom, x2:x, y2:rowsBottom+4, stroke:muted}));
+    const t = svgEl('text', {x:x, y:rowsBottom+16, 'text-anchor':'middle', 'font-size':12.5, fill:muted, 'font-family':'var(--font-mono)'});
+    t.textContent = fmtHM(hd);
+    svg.appendChild(t);
+  }
+  // "UT" under the names column, at the height of the hour labels (as in
+  // the visibility plot)
+  const timeAxLbl = svgEl('text', {x:CHART_ML/2, y:rowsBottom+16, 'text-anchor':'middle', 'font-size':11, fill:muted});
+  timeAxLbl.textContent = 'UT';
+  svg.appendChild(timeAxLbl);
+  svg.appendChild(svgEl('line', {id:nowLineId, x1:-9999, x2:-9999, y1:rowsTop-4, y2:rowsBottom, stroke:'var(--error)', 'stroke-width':1.3, 'stroke-dasharray':'3,2', 'pointer-events':'none'}));
+}
+// EXPOSURE TIMELINE (first tab): the planned block of each scheduled target.
+// Unscheduled (belowLimit) rows of the plan have no block and are not shown.
+// Returns true if it drew anything (the box is shown if either tab has
+// content, see render()).
+function renderGantt(state) {
+  const svg = document.getElementById('gantt-svg');
+  const rows = (state.schedule || []).filter((s) => !s.belowLimit);
+  if (!rows.length) { svg.innerHTML = ''; return false; }
 
-  // Hatch pattern for "compromised" bars (targets observed outside their
-  // ideal altitude window). Re-declared here since this is a separate <svg>.
+  const geom = setupTimelineSvg(svg, document.getElementById('gantt-wrap'), state, rows.length);
+  const muted = getComputedStyle(document.body).getPropertyValue('--muted').trim() || '#888';
+
+  // Hatch pattern for "compromised" blocks (placed away from the target's
+  // altitude window)
   const defs = svgEl('defs', {});
   const pattern = svgEl('pattern', {id:'hatch', width:6, height:6, patternTransform:'rotate(45)', patternUnits:'userSpaceOnUse'});
   pattern.appendChild(svgEl('rect', {width:6, height:6, fill:'currentColor', 'fill-opacity':0.35}));
@@ -4050,197 +4173,79 @@ function renderGantt(state) {
   defs.appendChild(pattern);
   svg.appendChild(defs);
 
-  svg.appendChild(svgEl('line', {x1:ML, y1:rowsTop-4, x2:W-MR, y2:rowsTop-4, stroke:line}));
   rows.forEach((s, i) => {
-    const y = rowsTop + i*rowH;
-    const sel = isSelectedTarget(s.id);
-    const dim = selectionAffectsBoxes() && !sel;
-    if (sel) svg.appendChild(svgEl('rect', {x:0, y:y, width:W, height:rowH, fill:'var(--accent)', 'fill-opacity':0.12}));
-    const hit = svgEl('rect', {class:'gantt-row-hit', x:0, y:y, width:W, height:rowH, fill:'transparent', 'data-id':s.id});
-    hit.addEventListener('click', () => toggleSelectedTarget(s.id));
-    svg.appendChild(hit);
+    const dim = drawTimelineRow(svg, geom, s, i);
+    const y = geom.rowsTop + i * GANTT_ROW_H;
     const barColor = dim ? muted : s.color;
-    // 'pointer-events':'none' on every element painted ON TOP of the
-    // hit-rect (name, bar, hatch, order number) — otherwise a real click
-    // lands on whichever of THOSE is topmost at that point (a real click
-    // needs an actually-painted target, unlike elementFromPoint or a
-    // programmatic dispatchEvent), never reaching the hit-rect's own
-    // listener at all where the row visually has content — only the empty
-    // margin around it would ever register a click.
-    const nameLbl = svgEl('text', {x:ML-8, y:y+rowH/2+4, 'text-anchor':'end', 'font-size':12.5, fill:dim?muted:ink, 'pointer-events':'none'});
-    nameLbl.textContent = s.name;
-    svg.appendChild(nameLbl);
-    const x1 = scaleX(s.start), x2 = scaleX(s.end);
-    // Symmetric (4px top, 4px bottom) padding within the row band, so the
-    // bar/hit-zone/highlight all share the exact same visual center.
-    const bar = svgEl('rect', {x:x1, y:y+4, width:Math.max(2,x2-x1), height:rowH-8, fill:barColor, rx:2, 'fill-opacity':dim?0.45:1, 'pointer-events':'none'});
+    const x1 = geom.scaleX(s.start), x2 = geom.scaleX(s.end);
+    // 4 px of padding above and below the bar, within the row
+    const bar = svgEl('rect', {x:x1, y:y+4, width:Math.max(2,x2-x1), height:GANTT_ROW_H-8, fill:barColor, rx:2, 'fill-opacity':dim?0.45:1, 'pointer-events':'none'});
     svg.appendChild(bar);
     if (s.compromised) {
-      const hatchBar = svgEl('rect', {x:x1, y:y+4, width:Math.max(2,x2-x1), height:rowH-8, fill:'url(#hatch)', rx:2, style:`color:${barColor}`, 'fill-opacity':dim?0.45:1, 'pointer-events':'none'});
+      const hatchBar = svgEl('rect', {x:x1, y:y+4, width:Math.max(2,x2-x1), height:GANTT_ROW_H-8, fill:'url(#hatch)', rx:2, style:`color:${barColor}`, 'fill-opacity':dim?0.45:1, 'pointer-events':'none'});
       svg.appendChild(hatchBar);
     }
-    const ordLbl = svgEl('text', {x:x1+3, y:y+rowH/2+4, 'font-size':11, fill:'#fff', 'font-weight':700, opacity:dim?0.6:1, 'pointer-events':'none'});
+    const ordLbl = svgEl('text', {x:x1+3, y:y+GANTT_ROW_H/2+4, 'font-size':11, fill:'#fff', 'font-weight':700, opacity:dim?0.6:1, 'pointer-events':'none'});
     ordLbl.textContent = s.order;
     svg.appendChild(ordLbl);
-    // Per-row divider so the row's bounds — which are exactly the
-    // hit-zone's bounds — are visually explicit, not just implied by
-    // whitespace around the bar.
-    svg.appendChild(svgEl('line', {x1:ML, y1:y+rowH, x2:W-MR, y2:y+rowH, stroke:line, opacity:0.5}));
   });
-
-  // Sunset/twilight/sunrise reference lines, matching the main plot.
-  [state.win.sunset, state.win.twiEve, state.win.twiMorn, state.win.sunrise].forEach((t) => {
-    if (!t) return;
-    const x = scaleX(t.ut + 2451545.0);
-    svg.appendChild(svgEl('line', {x1:x, y1:rowsTop-4, x2:x, y2:rowsBottom, stroke:muted, 'stroke-dasharray':'4,3', opacity:0.5}));
-  });
-
-  // UT hour ticks along the bottom, aligned with the main plot's grid.
-  for (const hd of hourTicksBetween(t0, t1)) {
-    const x = scaleX(dateToJd(hd));
-    svg.appendChild(svgEl('line', {x1:x, y1:rowsBottom, x2:x, y2:rowsBottom+4, stroke:muted}));
-    const t = svgEl('text', {x:x, y:rowsBottom+16, 'text-anchor':'middle', 'font-size':12.5, fill:muted, 'font-family':'var(--font-mono)'});
-    t.textContent = fmtHM(hd);
-    svg.appendChild(t);
-  }
-  // Under the names column, at the same height as the hour ticks — same
-  // convention as the main plot's own left-margin "UT" label.
-  const timeAxLbl = svgEl('text', {x:ML/2, y:rowsBottom+16, 'text-anchor':'middle', 'font-size':11, fill:muted});
-  timeAxLbl.textContent = 'UT';
-  svg.appendChild(timeAxLbl);
-
-  // --- "now" marker (see the matching one in render()) ---
-  svg.appendChild(svgEl('line', {id:'now-line-gantt', x1:-9999, x2:-9999, y1:rowsTop-4, y2:rowsBottom, stroke:'var(--error)', 'stroke-width':1.3, 'stroke-dasharray':'3,2'}));
+  drawTimelineFrame(svg, geom, state, rows.length, 'now-line-gantt');
   return true;
 }
-// All targets render() still knows about: currently in OBSERVATION PLAN
-// (state.schedule) plus any excluded from it but still tracked in
-// OBSERVATION TIMELINE (see removeTargetFromPlan()). Shared by
-// renderObservationTimelineTable() and renderObservingGantt().
+// Every target the tables know about: the plan rows (state.schedule, with
+// inPlan false for the unscheduled ones), the targets removed from the plan
+// but kept in the LOGBOOK (see removeTargetFromPlan()) and those that never
+// reach their minimum altitude. Shared by renderObservationTimelineTable()
+// and renderObservingGantt().
 function getAllTrackedTargets(state) {
-  // belowLimit rows (see placeInOrder()) are technically still part of
-  // state.schedule, but never actually placed — they get the same "not in
-  // plan" red cross as an excluded target, not the green check.
   const inPlanRows = (state.schedule || []).map((s) => ({ ...s, inPlan: !s.belowLimit }));
   const excludedRows = [];
   for (const id of excludedFromPlan) {
     const info = excludedTargetInfo[id];
     if (!info) continue;
-    excludedRows.push({ id, name: info.name, ra_h: info.ra_h, dec_d: info.dec_d, inPlan: false, color: null });
+    excludedRows.push({ id, name: info.name, ra_h: info.ra_h, dec_d: info.dec_d, priority: info.priority, inPlan: false, color: null });
   }
-  const belowAltitudeRows = (state.belowAltitudeExcluded || []).map((b) => ({ ...b, inPlan: false, color: null, belowLimit: true }));
+  const belowAltitudeRows = (state.belowAltitudeExcluded || []).map((b) => ({ ...b, inPlan: false, color: null, belowLimit: true, notScheduledReason: 'never' }));
   return [...inPlanRows, ...excludedRows, ...belowAltitudeRows];
 }
-// OBSERVING TIMELINE (the EXPOSURE TIMELINE box's second tab): unlike the
-// plan-based first tab, rows appear only once a target has actually been
-// started (any status other than "none"), in the order they were started —
-// building up live through the night rather than showing the plan upfront.
-// Each bar starts at zero width at the real Start Observation click and
-// grows with real elapsed time while "Observing"; it stops growing (freezes
-// at the real End Observation click) once marked finished. Colors match the
-// EXPOSURE TIMELINE tab's own target colors; a target no longer in
-// OBSERVATION PLAN (so with no color of its own — see getAllTrackedTargets)
-// falls back to dark gray. Returns true if it drew anything (see renderGantt()).
+// OBSERVING TIMELINE (second tab): the real observations, one row per target
+// already started, in the order they were started. Each bar runs from the
+// real start click to the end click or, while "Observing", to now (redrawn
+// every second by tickLiveDisplays()). Bars use the target's color, or dark
+// gray for a target with none (removed from the plan). The time axis is the
+// plotted night's, shared with the other charts: a bar outside it is
+// clipped or not drawn. Returns true if it drew anything (see renderGantt()).
 function renderObservingGantt(state) {
   const svg = document.getElementById('obs-gantt-svg');
-  const tracked = getAllTrackedTargets(state);
-  const rows = tracked
+  const rows = getAllTrackedTargets(state)
     .filter((s) => scheduleNotes[s.id] && scheduleNotes[s.id].status !== 'none' && scheduleNotes[s.id].startedAt)
     .sort((a, b) => scheduleNotes[a.id].startedAt - scheduleNotes[b.id].startedAt);
+  // No rows, or no night computed (placeholder state after removing every target)
+  if (!rows.length || !(state.t1jd > state.t0jd)) { svg.innerHTML = ''; return false; }
 
-  if (!rows.length) { svg.innerHTML = ''; return false; }
-
-  const wrap = document.getElementById('obs-gantt-wrap');
-  const W = chartWidth(wrap, state);
-  const ML = 120, MR = 60, MT = 12, MB = 44;
-  const rowH = 24;
-  const rowsTop = MT, rowsBottom = rowsTop + rows.length * rowH;
-  // Fits tightly to its own rows — capped/scrolled at the wrap level; see
-  // syncGanttBoxHeight().
-  const H = rowsBottom + MB;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('width', W);
-  svg.setAttribute('height', H);
-  svg.innerHTML = '';
-
-  // Same axis as EXPOSURE TIMELINE and the main plot (the planned night
-  // window) — not this tab's own observing activity — so all three stay
-  // aligned. A bar whose start/end falls outside that window (or a "now"
-  // outside it, e.g. testing in daytime) is clipped to what's visible
-  // instead of distorting the shared axis; see the per-row visibility
-  // check below.
-  const now = new Date();
-  const t0 = state.t0jd, t1 = state.t1jd;
-
-  const scaleX = (jd) => ML + (jd - t0) / (t1 - t0) * (W - ML - MR);
-
-  const ink = getComputedStyle(document.body).getPropertyValue('--ink').trim() || '#222';
+  const geom = setupTimelineSvg(svg, document.getElementById('obs-gantt-wrap'), state, rows.length);
+  const { W, scaleX } = geom;
   const muted = getComputedStyle(document.body).getPropertyValue('--muted').trim() || '#888';
-  const line = getComputedStyle(document.body).getPropertyValue('--line').trim() || '#ccc';
-  const FALLBACK_COLOR = '#555b66'; // dark gray — a target with no color of its own at all
-
-  svg.appendChild(svgEl('line', {x1:ML, y1:rowsTop-4, x2:W-MR, y2:rowsTop-4, stroke:line}));
+  const FALLBACK_COLOR = '#555b66';  // Dark gray, for a target with no color of its own
+  const now = new Date();
 
   rows.forEach((s, i) => {
     const note = scheduleNotes[s.id];
-    const y = rowsTop + i*rowH;
-    const sel = isSelectedTarget(s.id);
-    const dim = selectionAffectsBoxes() && !sel;
-    if (sel) svg.appendChild(svgEl('rect', {x:0, y:y, width:W, height:rowH, fill:'var(--accent)', 'fill-opacity':0.12}));
-    const hit = svgEl('rect', {class:'gantt-row-hit', x:0, y:y, width:W, height:rowH, fill:'transparent', 'data-id':s.id});
-    hit.addEventListener('click', () => toggleSelectedTarget(s.id));
-    svg.appendChild(hit);
-    // 'pointer-events':'none' on the name/bar — see the matching comment in
-    // renderGantt() on why: otherwise a real click on the visible name or
-    // bar never reaches the hit-rect painted underneath them.
-    const nameLbl = svgEl('text', {x:ML-8, y:y+rowH/2+4, 'text-anchor':'end', 'font-size':12.5, fill:dim?muted:ink, 'pointer-events':'none'});
-    nameLbl.textContent = s.name;
-    svg.appendChild(nameLbl);
-
+    const dim = drawTimelineRow(svg, geom, s, i);
+    const y = geom.rowsTop + i * GANTT_ROW_H;
     const endDate = note.status === 'finished' ? note.finishedAt : now;
     const rawX1 = scaleX(dateToJd(note.startedAt));
     const rawX2 = scaleX(dateToJd(endDate));
     const barLo = Math.min(rawX1, rawX2), barHi = Math.max(rawX1, rawX2);
-    // No overlap at all with the plotted window: don't draw a bar (the row
-    // itself, and its name, still show).
-    if (barHi >= ML && barLo <= W - MR) {
-      const x1 = Math.min(Math.max(rawX1, ML), W - MR);
-      const x2 = Math.min(Math.max(rawX2, ML), W - MR);
-      const baseColor = s.color ? s.color : FALLBACK_COLOR;
-      const color = dim ? muted : baseColor;
-      const bar = svgEl('rect', {x:Math.min(x1,x2), y:y+4, width:Math.max(2,Math.abs(x2-x1)), height:rowH-8, fill:color, rx:2, 'fill-opacity':dim?0.45:1, 'pointer-events':'none'});
-      svg.appendChild(bar);
+    // Drawn only if it overlaps the plotted night, clipped to it
+    if (barHi >= CHART_ML && barLo <= W - CHART_MR) {
+      const x1 = Math.min(Math.max(rawX1, CHART_ML), W - CHART_MR);
+      const x2 = Math.min(Math.max(rawX2, CHART_ML), W - CHART_MR);
+      const color = dim ? muted : (s.color || FALLBACK_COLOR);
+      svg.appendChild(svgEl('rect', {x:Math.min(x1,x2), y:y+4, width:Math.max(2,Math.abs(x2-x1)), height:GANTT_ROW_H-8, fill:color, rx:2, 'fill-opacity':dim?0.45:1, 'pointer-events':'none'}));
     }
-    // Per-row divider — see the matching one in renderGantt().
-    svg.appendChild(svgEl('line', {x1:ML, y1:y+rowH, x2:W-MR, y2:y+rowH, stroke:line, opacity:0.5}));
   });
-
-  if (state.win) {
-    [state.win.sunset, state.win.twiEve, state.win.twiMorn, state.win.sunrise].forEach((t) => {
-      if (!t) return;
-      const jd = t.ut + 2451545.0;
-      const x = scaleX(jd);
-      svg.appendChild(svgEl('line', {x1:x, y1:rowsTop-4, x2:x, y2:rowsBottom, stroke:muted, 'stroke-dasharray':'4,3', opacity:0.5}));
-    });
-  }
-
-  for (const hd of hourTicksBetween(t0, t1)) {
-    const x = scaleX(dateToJd(hd));
-    svg.appendChild(svgEl('line', {x1:x, y1:rowsBottom, x2:x, y2:rowsBottom+4, stroke:muted}));
-    const t = svgEl('text', {x:x, y:rowsBottom+16, 'text-anchor':'middle', 'font-size':12.5, fill:muted, 'font-family':'var(--font-mono)'});
-    t.textContent = fmtHM(hd);
-    svg.appendChild(t);
-  }
-  // Under the names column, at the same height as the hour ticks — same
-  // convention as the main plot's own left-margin "UT" label.
-  const timeAxLbl = svgEl('text', {x:ML/2, y:rowsBottom+16, 'text-anchor':'middle', 'font-size':11, fill:muted});
-  timeAxLbl.textContent = 'UT';
-  svg.appendChild(timeAxLbl);
-
-  // --- "now" marker: kept live by updateNowLines() (ticks every second),
-  //     same as now-line-plot/now-line-gantt — hidden when "now" falls
-  //     outside the shared [t0,t1] window. ---
-  svg.appendChild(svgEl('line', {id:'now-line-obs-gantt', x1:-9999, x2:-9999, y1:rowsTop-4, y2:rowsBottom, stroke:'var(--error)', 'stroke-width':1.3, 'stroke-dasharray':'3,2'}));
+  drawTimelineFrame(svg, geom, state, rows.length, 'now-line-obs-gantt');
   return true;
 }
 
@@ -4275,11 +4280,9 @@ function buildSessionData() {
     maxRowsObs: document.getElementById('inp-max-rows-obs').value,
     maxRowsGantt: document.getElementById('inp-max-rows-gantt').value,
     targets: collectTargets(),
-    // Whether the last computed view included the observation plan (vs. just
-    // the altitude plot), so restoring a session brings the plan back too.
+    // Whether a plan was shown, so that restoring the session re-plans
     hasSchedule: !!(lastPlot && lastPlot.schedule && lastPlot.schedule.length),
-    // Per-target Observed/Comments state, keyed by the same id used in
-    // scheduleNotes (see createTargetCard) — otherwise this is lost on reload.
+    // LOGBOOK record of each target (status, times, seeing, comment), by id
     scheduleNotes: Object.fromEntries(Object.entries(scheduleNotes).map(([id, n]) => [
       id, {
         status: n.status || 'none',
@@ -4289,12 +4292,12 @@ function buildSessionData() {
         seeingEnd: n.seeingEnd || null,
         seeingSamples: Array.isArray(n.seeingSamples) ? n.seeingSamples : [],
         comment: n.comment || '',
+        autoComment: !!n.autoComment,
       },
     ])),
-    // The user's OBSERVATION TIMELINE row order, if any (see timelineOrder).
+    // Hand-made LOGBOOK row order, if any (see timelineOrder)
     timelineOrder: timelineOrder,
-    // Targets removed from OBSERVATION PLAN but still tracked in TIMELINE —
-    // see removeTargetFromPlan().
+    // Targets removed from the plan but kept in the LOGBOOK (see removeTargetFromPlan())
     excludedFromPlan: Array.from(excludedFromPlan),
     excludedTargetInfo: excludedTargetInfo,
   };
@@ -4305,7 +4308,7 @@ function buildSessionData() {
 function applySessionData(data) {
   if (data.date) document.getElementById('inp-date').value = data.date;
   if (data.observatory) document.getElementById('inp-observatory').value = data.observatory;
-  populateWeatherStationSelect(); // before setting weatherStation below — a value with no matching <option> yet is silently ignored
+  populateWeatherStationSelect(); // Before setting the station below (a value with no <option> is ignored)
   if (data.customObs) {
     document.getElementById('obs-name').value = data.customObs.name || '';
     document.getElementById('obs-lat').value = data.customObs.lat || '';
@@ -4331,9 +4334,7 @@ function applySessionData(data) {
   if (data.maxRowsGantt) document.getElementById('inp-max-rows-gantt').value = data.maxRowsGantt;
   updateWeatherPanel();
 
-  // Restore Observed/Comments state before the plan is rebuilt below, so the
-  // regenerated schedule rows pick it back up (see scheduleNotes lookups in
-  // the observation-plan render code) instead of coming back blank.
+  // LOGBOOK records restored before the plan is rebuilt below, which reads them
   for (const k of Object.keys(scheduleNotes)) delete scheduleNotes[k];
   if (data.scheduleNotes) {
     for (const [id, n] of Object.entries(data.scheduleNotes)) {
@@ -4345,11 +4346,11 @@ function applySessionData(data) {
         seeingEnd: n.seeingEnd || null,
         seeingSamples: Array.isArray(n.seeingSamples) ? n.seeingSamples : [],
         comment: n.comment || '',
+        autoComment: !!n.autoComment,
       };
     }
   }
-  // If any target was mid-observation when the session was saved, restart
-  // the seeing sampler so it keeps collecting samples on restore.
+  // A target saved while "Observing" keeps having its seeing sampled
   if (isAnyTargetObserving()) startSeeingSamplerIfNeeded();
   timelineOrder = Array.isArray(data.timelineOrder) ? data.timelineOrder : null;
 
@@ -4389,10 +4390,9 @@ function applySessionData(data) {
         n_exp: t.n_exp, exp_time: t.exp_time, overhead: t.overhead, min_altitude: t.min_altitude, priority: t.priority,
       });
     });
-    // Re-run the plot (and the observation plan, if one was showing) so a
-    // restored session looks the same as when it was saved, not just an
-    // empty chart with the target list filled in.
-    const state = computeAll(!!data.hasSchedule);
+    // Recompute the plot (and the plan, if one was shown) so the session
+    // looks as it did when saved
+    const state = computeAll(!!data.hasSchedule, false, true);  // The session brings its own LOGBOOK
     if (state) render(state, true);
     return true;
   }
@@ -4400,21 +4400,38 @@ function applySessionData(data) {
 }
 
 /* ======================================================================
-   LOCAL PERSISTENCE (a convenience, not a requirement — auto-save/restore
-   across page reloads in the same browser)
+   LOCAL PERSISTENCE (automatic save/restore of the session across page
+   reloads, in this browser only)
    ====================================================================== */
+const STORAGE_KEY = 'binaralt-state';
+// Key used by earlier versions (when the tool was called StarAlt): read once
+// if the current key is missing, then migrated to STORAGE_KEY and deleted
+const LEGACY_STORAGE_KEY = 'staralt-state';
 function saveToLocalStorage() {
   try {
-    localStorage.setItem('staralt-state', JSON.stringify(buildSessionData()));
-  } catch (e) { /* storage unavailable: nothing to do */ }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(buildSessionData()));
+  } catch (e) { /* Storage unavailable: nothing to do */ }
 }
 function loadFromLocalStorage() {
   try {
-    const raw = localStorage.getItem('staralt-state');
+    let raw = localStorage.getItem(STORAGE_KEY);
+    const fromLegacy = !raw;
+    if (fromLegacy) raw = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return false;
-    return applySessionData(JSON.parse(raw));
-  } catch (e) { /* ignore corrupted data */ }
+    const restored = applySessionData(JSON.parse(raw));
+    if (fromLegacy) {
+      saveToLocalStorage();
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
+    return restored;
+  } catch (e) { /* Corrupted data: start from the defaults */ }
   return false;
+}
+function clearLocalStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch (e) { /* Storage unavailable: nothing to do */ }
 }
 
 /* ======================================================================
@@ -4445,7 +4462,7 @@ async function downloadFile(filename, content, mimeType) {
 async function saveSessionToFile() {
   const data = buildSessionData();
   if (!data.targets.length) { log('Nothing to save: add at least one target first.', 'error'); return; }
-  const ok = await downloadFile('staralt-session.json', JSON.stringify(data, null, 2), 'application/json');
+  const ok = await downloadFile('binaralt-session.json', JSON.stringify(data, null, 2), 'application/json');
   if (ok) log('Session saved.', 'success');
 }
 function loadSessionFromFile(file) {
@@ -4459,7 +4476,7 @@ function loadSessionFromFile(file) {
       }
       const restored = applySessionData(data);
       if (restored) {
-        planUndoStack = []; // a different session — old plan snapshots no longer apply
+        planUndoStack = []; // A different session: the old snapshots no longer apply
         updateUndoButtonState();
         log(`Session loaded: ${data.targets.length} target(s).`, 'success');
         saveToLocalStorage();
@@ -4523,7 +4540,7 @@ function exportTargetsCsv() {
       t.name, t.raStr, t.decStr, t.period, t.hjd0, t.jd0, t.n_exp, t.exp_time, t.overhead, t.min_altitude, t.priority,
     ].map(csvEscape).join(','));
   }
-  downloadFile('staralt-targets.csv', lines.join('\r\n'), 'text/csv').then(ok => {
+  downloadFile('binaralt-targets.csv', lines.join('\r\n'), 'text/csv').then(ok => {
     if (ok) log(`Exported ${targets.length} target(s) to CSV.`, 'success');
   });
 }
@@ -4578,7 +4595,7 @@ function importTargetsCsv(file) {
 }
 
 /* ======================================================================
-   EVENTS (do not depend on Astronomy Engine)
+   BUTTONS AND FILE INPUTS
    ====================================================================== */
 document.getElementById('btn-add-target').addEventListener('click', () => addTargetRow());
 document.getElementById('btn-clear').addEventListener('click', () => {
@@ -4587,14 +4604,13 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   excludedFromPlan.clear();
   for (const k of Object.keys(excludedTargetInfo)) delete excludedTargetInfo[k];
   selectedTargetId = null;
-  planUndoStack = []; // a fresh start — old plan snapshots are no longer relevant
+  planUndoStack = []; // A fresh start: the old snapshots no longer apply
   updateUndoButtonState();
   resetPlotDisplay();
   clearLog();
   applyDefaultState();
-  // Otherwise reloading the page right after "Clear all" would restore the
-  // pre-clear session from local storage instead of this fresh state.
-  try { localStorage.removeItem('staralt-state'); } catch (e) { /* storage unavailable: nothing to do */ }
+  // Otherwise a reload right after "Clear All" would restore the old session
+  clearLocalStorage();
   log('Astronomy engine ready.', 'success');
 });
 document.getElementById('btn-delete-all-plan').addEventListener('click', () => {
@@ -4640,20 +4656,14 @@ document.getElementById('session-file-input').addEventListener('change', (e) => 
   e.target.value = '';
 });
 
-// Re-render the charts whenever their actual on-screen width changes, so they
-// keep tracking the available space dynamically (debounced to avoid
-// re-drawing on every intermediate pixel while the user drags the window
-// edge). A ResizeObserver on the wrap elements themselves — rather than only
-// a window 'resize' listener — also catches width changes that don't come
-// from the browser window resizing (e.g. the host page/panel around this
-// embedded chart being resized instead).
+// Re-renders the charts when their width changes (debounced while the window
+// is being resized). The ResizeObserver also catches width changes that do
+// not come from the window itself.
 let resizeTimer = null;
 function scheduleChartRerender() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    // render() re-derives the plot's height from the SCHEDULER box's current
-    // position (see its own comment), so it must re-run on resize too, not
-    // just when the underlying data changes.
+    // render() also recomputes the plot height (aligned with the EPHEMERIS box)
     if (lastPlot) render(lastPlot, true);
     syncTargetsBoxHeight();
   }, 150);
@@ -4690,13 +4700,11 @@ for (const id of CHART_SCROLL_WRAP_IDS) {
 /* ======================================================================
    STARTUP
    ====================================================================== */
-// Resets every field to the same values a fresh page load starts with
-// (today's date, OT, the built-in scheduler defaults, one example target),
-// shared by the initial "nothing restored from local storage" case and by
-// "Clear all" below, so the two can never drift apart.
+// Resets every field to the values of a fresh start (the current night, OT,
+// the default scheduler values and one example target). Used on the first
+// load (nothing restored) and by "Clear All".
 function applyDefaultState() {
-  const today = new Date();
-  document.getElementById('inp-date').value = today.toISOString().slice(0,10);
+  document.getElementById('inp-date').value = currentNightDate();
 
   document.getElementById('inp-observatory').value = 'OT';
   document.getElementById('custom-obs-fields').classList.add('hidden');
@@ -4719,11 +4727,23 @@ function applyDefaultState() {
   document.getElementById('inp-sched-end-time').value = '05:00';
   document.getElementById('sched-end-custom').classList.add('hidden');
 
-  document.getElementById('inp-weather-station').value = 'not';
-
   document.getElementById('targets-list').innerHTML = '';
   addTargetRow({ name: 'Vega', ra: '18:36:56.3', dec: '+38:47:01', n_exp: 20, exp_time: 60 });
   updateWeatherPanel();
+}
+// Hour (local time of the computer) at which the default planning date
+// switches to the current calendar day.
+const NIGHT_DATE_SWITCH_HOUR = 9;
+// Date ("YYYY-MM-DD") of the night to plan by default, in the browser's local
+// time. The planning date is the evening on which the night starts (see
+// localNoonUTC()), so from 00:00 to 08:59 (still observing, or just after
+// dawn) it is the previous calendar day, and from 09:00 to 23:59 it is
+// today. Local, not UTC: toISOString() would give the next day in the
+// evening west of Greenwich.
+function currentNightDate() {
+  const d = new Date();
+  if (d.getHours() < NIGHT_DATE_SWITCH_HOUR) d.setDate(d.getDate() - 1);  // setDate() handles month/year changes
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function setupInitialTargets(){
   const restored = loadFromLocalStorage();
@@ -4748,12 +4768,12 @@ if (typeof Astronomy === 'undefined') {
     const open = dropdown.classList.toggle('open');
     btn.setAttribute('aria-expanded', open);
   });
-  // Close when clicking outside.
+  // Close when clicking outside
   document.addEventListener('click', () => {
     dropdown.classList.remove('open');
     btn.setAttribute('aria-expanded', 'false');
   });
-  // Close when pressing Escape.
+  // Close with Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       dropdown.classList.remove('open');

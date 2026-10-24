@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 # =============================================================================
 [project]
 name = "panorama"
-version = "1.0.0"
+version = "1.0.1"
 description = "PANORAMA (Package for the ANalysis Of RApidly rotating MAssive stars)"
 readme = "README.md"
 requires-python = ">=3.10"
