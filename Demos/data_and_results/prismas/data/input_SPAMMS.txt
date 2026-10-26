@@ -1,0 +1,29 @@
+object_type = single
+
+grid_type = T
+path_to_grid = /home/
+output_directory = /home/ 
+path_to_obs_spectra = None
+
+teff = 22000
+r_pole = 8
+mass = 16
+
+v_crit_frac = 0.7
+inclination = 55
+
+t0 = 0.000
+times = [0.0]
+
+distortion = roche
+gravity_darkening = EL
+ntriangles = 5000
+gamma = 0
+
+metallicity = [1.00]
+alpha_enhancement = 0
+
+v_micro = 5
+v_macro = 0
+
+selected_wavelength_range = [4000-4700]

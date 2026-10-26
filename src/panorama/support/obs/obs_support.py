@@ -16,7 +16,8 @@ Conventions shared by every function in this module:
       ('YYYY-MM-DD').
     - Validation helpers receive the name of the argument of the calling
       function ('name'), so that their error messages refer to that argument
-      and the same argument gives the same message in every function.
+      and the same argument gives the same message in every function
+      ('_check_bool' is also reused by 'panorama.prismas').
     - All functions and class constructors validate their inputs before
       computing; nested functions and the HTTP callbacks of the BinarAlt
       server do not raise (they report errors in the JSON response).
@@ -170,7 +171,7 @@ def _coord(
 
         ValueError
             If 'coord_input' is empty or cannot be parsed into valid
-            coordinates.
+            coordinates, or 'name' is empty.
 
     -----
     Notes
@@ -224,7 +225,9 @@ def _coord(
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
     if not isinstance(name, str):
-        raise TypeError(f"Argument name 'name' must be a string. Got {type(name).__name__}.")
+        raise TypeError(f"Error-message text 'name' must be a string. Got {type(name).__name__}.")
+    elif not name.strip():
+        raise ValueError(f"Error-message text 'name' must be a non-empty string. Got '{name}'.")
     #
     if not isinstance(coord_input, (str, tuple, list, dict, SkyCoord)):
         raise TypeError(f"Coordinates '{name}' must be a string, a (RA, Dec) tuple or list, a dictionary or an astropy SkyCoord. Got {type(coord_input).__name__}.")
@@ -558,12 +561,25 @@ def _check_bool(
         TypeError
             If 'value' is not a boolean, or 'name' or 'label' are not
             strings.
+
+        ValueError
+            If 'name' or 'label' are empty.
+
+    -----
+    Notes
+    -----
+        - Shared by the boolean flags of 'panorama.obs' and
+          'panorama.prismas' (and of the 'prismas' helpers), so that the same
+          argument gives the same error messages.
     """
 
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
-    if not isinstance(name, str) or not isinstance(label, str):
-        raise TypeError(f"Error-message texts 'name' and 'label' must be strings. Got {type(name).__name__} and {type(label).__name__}.")
+    for arg_name, arg_value in (("name", name), ("label", label)):
+        if not isinstance(arg_value, str):
+            raise TypeError(f"Error-message text '{arg_name}' must be a string. Got {type(arg_value).__name__}.")
+        elif not arg_value.strip():
+            raise ValueError(f"Error-message text '{arg_name}' must be a non-empty string. Got '{arg_value}'.")
 
 
     # ####################  COMPUTATION  ####################
@@ -800,7 +816,8 @@ def _check_night(
             strings.
 
         ValueError
-            If 'night' cannot be parsed or is not a single date.
+            If 'night' cannot be parsed or is not a single date, or 'name' or
+            'label' are empty.
 
     -----
     Notes
@@ -815,8 +832,11 @@ def _check_night(
 
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
-    if not isinstance(name, str) or not isinstance(label, str):
-        raise TypeError(f"Error-message texts 'name' and 'label' must be strings. Got {type(name).__name__} and {type(label).__name__}.")
+    for arg_name, arg_value in (("name", name), ("label", label)):
+        if not isinstance(arg_value, str):
+            raise TypeError(f"Error-message text '{arg_name}' must be a string. Got {type(arg_value).__name__}.")
+        elif not arg_value.strip():
+            raise ValueError(f"Error-message text '{arg_name}' must be a non-empty string. Got '{arg_value}'.")
 
 
     # ####################  COMPUTATION  ####################
@@ -875,7 +895,8 @@ def _check_time(
             strings.
 
         ValueError
-            If 'time' cannot be parsed or is not a single time.
+            If 'time' cannot be parsed or is not a single time, or 'name' or
+            'label' are empty.
 
     -----
     Notes
@@ -890,8 +911,11 @@ def _check_time(
 
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
-    if not isinstance(name, str) or not isinstance(label, str):
-        raise TypeError(f"Error-message texts 'name' and 'label' must be strings. Got {type(name).__name__} and {type(label).__name__}.")
+    for arg_name, arg_value in (("name", name), ("label", label)):
+        if not isinstance(arg_value, str):
+            raise TypeError(f"Error-message text '{arg_name}' must be a string. Got {type(arg_value).__name__}.")
+        elif not arg_value.strip():
+            raise ValueError(f"Error-message text '{arg_name}' must be a non-empty string. Got '{arg_value}'.")
 
 
     # ####################  COMPUTATION  ####################
@@ -950,7 +974,8 @@ def _check_times(
             'name' or 'label' are not strings.
 
         ValueError
-            If 'times' is empty or any time cannot be parsed.
+            If 'times' is empty or any time cannot be parsed, or 'name' or
+            'label' are empty.
 
     -----
     Notes
@@ -967,8 +992,11 @@ def _check_times(
 
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
-    if not isinstance(name, str) or not isinstance(label, str):
-        raise TypeError(f"Error-message texts 'name' and 'label' must be strings. Got {type(name).__name__} and {type(label).__name__}.")
+    for arg_name, arg_value in (("name", name), ("label", label)):
+        if not isinstance(arg_value, str):
+            raise TypeError(f"Error-message text '{arg_name}' must be a string. Got {type(arg_value).__name__}.")
+        elif not arg_value.strip():
+            raise ValueError(f"Error-message text '{arg_name}' must be a non-empty string. Got '{arg_value}'.")
 
 
     # ####################  COMPUTATION  ####################

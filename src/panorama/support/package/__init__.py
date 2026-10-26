@@ -8,5 +8,3 @@ Conventions shared by every object in this module:
     - Names are private (leading underscore) and are not exposed at the
       package level.
 """
-
-from __future__ import annotations

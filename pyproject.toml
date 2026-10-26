@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 # =============================================================================
 [project]
 name = "panorama"
-version = "1.0.1"
+version = "1.2.0"
 description = "PANORAMA (Package for the ANalysis Of RApidly rotating MAssive stars)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,12 +32,14 @@ keywords = [
     "continuum normalization",   # spec
     "line broadening",           # units: thermal and microturbulent velocities
     "massive stars",
+    "model atmospheres",         # prismas: Kurucz and TLUSTY grids
     "OB stars",
     "observation planning",      # obs, BinarAlt
     "radial velocity",           # obs.bary_corr, units
     "signal-to-noise ratio",     # obs
     "spectroscopy",
     "stellar rotation",
+    "synthetic spectra",         # prismas: PRISMAS and SPAMMS runs
     "vsini",                     # units: centrifugal gravity correction
 ]
 
@@ -60,6 +62,7 @@ dependencies = [
     "astroplan>=0.10",
     "astropy>=6.0",
     "astroquery>=0.4",
+    "isal>=1.0",
     "matplotlib>=3.6",
     "numpy>=1.23",
     "pandas>=1.3",

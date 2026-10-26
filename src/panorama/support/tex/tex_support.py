@@ -1,14 +1,15 @@
 """
 Internal helpers of the 'tex' module: validation of the file arguments shared
-by the public functions (also reused by 'spec' and 'obs'), reading and
-normalization of the lists of object names used by the catalog queries
-('queryviz', 'querysimbad'), and reading of the SIMBAD result fields.
+by the public functions (also reused by 'spec', 'obs' and 'prismas'), reading
+and normalization of the lists of object names used by the catalog queries
+('queryviz', 'querysimbad'; also reused to read the model catalogs of
+'prismas'), and reading of the SIMBAD result fields.
 
 Conventions shared by every function in this module:
     - Functions are private (leading underscore); they are used by the
-      public functions of 'panorama.tex' (and by those of 'panorama.spec'
-      and 'panorama.obs' for the file arguments) and are not exposed at the
-      package level.
+      public functions of 'panorama.tex' (and by those of 'panorama.spec',
+      'panorama.obs' and 'panorama.prismas' for the file arguments) and are
+      not exposed at the package level.
     - File arguments are paths (path + filename), given either as strings
       or as pathlib.Path objects, and are returned as pathlib.Path objects.
       Output directories are never created.
@@ -76,9 +77,10 @@ def _check_input_file(
     -----
     Notes
     -----
-        - Shared by 'nobib', 'missingbib', 'dupbib', 'read_pkl' and
-          'panorama.spec.readspec', so that the same argument gives the same
-          error messages.
+        - Shared by 'nobib', 'missingbib', 'dupbib', 'read_pkl',
+          'panorama.spec.readspec' and 'panorama.prismas.needed_models' (and
+          by the catalog and SPAMMS readers of 'prismas'), so that the same
+          argument gives the same error messages.
     """
 
     # ####################  MODULES & PACKAGES  ####################
@@ -155,7 +157,8 @@ def _check_output_file(
     Notes
     -----
         - Shared by 'queryviz', 'querysimbad', 'panorama.spec.writespec',
-          'rmvspec', 'normspec' and 'panorama.obs.fits_catalog', so that the
+          'rmvspec', 'normspec', 'panorama.obs.fits_catalog',
+          'panorama.prismas.find_models' and 'needed_models', so that the
           same argument gives the same error messages. Output directories are
           never created.
     """

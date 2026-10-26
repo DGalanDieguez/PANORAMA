@@ -97,7 +97,7 @@ Each module has its own README in [`READMEs/`](READMEs), all with the same struc
 |---|---|:---:|---|
 | `fitline` | Spectral-line profile fitting and measurement of line parameters | 🚧 | — |
 | `obs` | Target visibility, observation scheduling, timing (JD/HJD and ephemeris phases) and observing logs | ✅ | [obs_README.md](READMEs/obs_README.md) |
-| `prismas` | Model-atmosphere grid selection and output handling for the PRISMAS pipeline | 🚧 | — |
+| `prismas` | Model-atmosphere selection (Kurucz and TLUSTY grids), SPAMMS grid checks and renaming of the archives of PRISMAS runs | ✅ | [prismas_README.md](READMEs/prismas_README.md) |
 | `pyiacob_broad` | Python implementation of the IACOB-BROAD method: projected rotational velocity (*v* sin *i*) and macroturbulence from combined Fourier-transform and goodness-of-fit analyses | 🚧 | — |
 | `rot` | Physics of rapidly rotating stars: Roche-model geometry and gravity darkening | 🚧 | — |
 | `sii` | Joint fitting of stellar intensity interferometric and spectroscopic data | 🚧 | — |
@@ -172,6 +172,7 @@ Some notebooks need extra resources, such as internet access; the examples that 
 
 | Version | Date | Title | Description |
 |---|---|---|---|
+| [`v1.2.0`](#713-v120--prismas-module) | 2026-10-25 | PRISMAS Module | New `prismas` module: model-atmosphere selection, SPAMMS grid checks and renaming of PRISMAS archives. |
 | [`v1.0.1`](#712-v101--binaralt-weather-alarms) | 2026-10-22 | BinarAlt Weather Alarms | Weather-limit alarms in BinarAlt, bug fixes and updated user guide. |
 | [`v1.0.0`](#711-v100--initial-release) | 2026-10-24 | Initial Release | First public release of PANORAMA. |
 
@@ -195,6 +196,19 @@ Changes in the `obs` module (`binaralt`):
 * New alarms that warn the user when the weather limits are exceeded.
 * Several bug fixes.
 * Updated user guide ([`READMEs/BinarAlt_UserGuide.pdf`](READMEs/BinarAlt_UserGuide.pdf)).
+
+
+### 7.1.3. v1.2.0 — PRISMAS Module
+New module `prismas` ([`READMEs/prismas_README.md`](READMEs/prismas_README.md)), to prepare and post-process the runs of PRISMAS, the code that computes grids of synthetic spectra from model atmospheres for SPAMMS:
+* `find_models`: selection of the model atmospheres of a grid (Kurucz-Castelli `'KC'`, Kurucz-Mészáros `'KM'` and TLUSTY OSTAR2002/BSTAR2006 `'T'`) by single values, lists or ranges of *T*<sub>eff</sub>, log *g*, metallicity, [α/M] and [C/M], from the model catalogs distributed with PANORAMA (`src/panorama/support/prismas/models_grids/`). The names can be written to a file (e.g. for an HTCondor submission) and the model files located and copied from a local copy of the grid.
+* `needed_models`: grid check of SPAMMS (`-c`) for one or several input files, with the grid entries needed, the model atmospheres that PRISMAS can compute, the entries outside the grid, the output files and a figure of the needed entries on the grid nodes.
+* `rename_tars`: parallel renaming of the archives produced by PRISMAS in HPC mode to the names of modes 0 / 1 (optionally also their inner folder and files), with a dry-run mode.
+* New required dependency `isal` (ISA-L bindings), used by `rename_tars` for fast gzip compression and decompression of the archives.
+* New README and executed demo notebook ([`Demos/prismas_demo.ipynb`](Demos/prismas_demo.ipynb)).
+
+Other changes:
+* Internal validation helpers of `obs` and `spec`: same error messages as the rest of the package for their own arguments (the name and description of the argument being checked), and empty texts rejected.
+* Internal docstrings and comments updated to list every module that reuses the shared helpers of `tex`, `units`, `obs` and `spec`.
 
 ---
 <br>
@@ -250,7 +264,7 @@ This summary is for convenience only; the [LICENSE](LICENSE) file is the legally
 <br>
 
 ### 10.2. Citation Requirement
-The reference publication that the [LICENSE](LICENSE) file requires to be cited is given, with its BibTeX entry, in [Section 9](#9-how-to-cite). Methods implemented from other authors' work should also be cited as indicated in the corresponding module README (see READMEs folder).
+The reference publication that the [LICENSE](LICENSE) file requires to be cited is given, with its BibTeX entry, in [Section 9](#9-how-to-cite). Methods implemented from other authors' work should also be cited as indicated in the corresponding module README (see [`READMEs/`](READMEs) folder).
 
 ---
 <br>

@@ -6,8 +6,9 @@ the continuum fitting machinery ('normspec').
 
 Conventions shared by every function in this module:
     - Functions, classes and constants are private (leading underscore);
-      they are used by the public functions of 'panorama.spec' and are not
-      exposed at the package level.
+      they are used by the public functions of 'panorama.spec' (and
+      '_check_array' by the 'prismas' helpers) and are not exposed at the
+      package level.
     - Spectrum files are read and written in the formats given by their
       extension ('_ASCII_EXTENSIONS', '_FITS_EXTENSIONS'), optionally
       followed by '.gz'.
@@ -185,6 +186,14 @@ def _check_array(
         ValueError
             If 'value' is not 1D or does not have 'size' elements, 'name' or
             'label' are empty, 'kind' is unknown or 'size' is negative.
+
+    -----
+    Notes
+    -----
+        - Shared by the 'spec' helpers that receive spectra and by the
+          'prismas' helpers that receive whole catalogs ('_passes',
+          '_plot_needed_models'), so that the same argument gives the same
+          error messages.
     """
 
     # ####################  MODULES & PACKAGES  ####################
@@ -195,14 +204,14 @@ def _check_array(
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
     if not isinstance(name, str):
-        raise TypeError(f"Argument name 'name' must be a string. Got {type(name).__name__}.")
+        raise TypeError(f"Error-message text 'name' must be a string. Got {type(name).__name__}.")
     elif not name.strip():
-        raise ValueError(f"Argument name 'name' must be a non-empty string. Got '{name}'.")
+        raise ValueError(f"Error-message text 'name' must be a non-empty string. Got '{name}'.")
     #
     if not isinstance(label, str):
-        raise TypeError(f"Argument description 'label' must be a string. Got {type(label).__name__}.")
+        raise TypeError(f"Error-message text 'label' must be a string. Got {type(label).__name__}.")
     elif not label.strip():
-        raise ValueError(f"Argument description 'label' must be a non-empty string. Got '{label}'.")
+        raise ValueError(f"Error-message text 'label' must be a non-empty string. Got '{label}'.")
     #
     if not isinstance(kind, str):
         raise TypeError(f"Array kind 'kind' must be a string. Got {type(kind).__name__}.")
@@ -464,9 +473,9 @@ def _load_spectrum(
     # ####################  INPUTS VALIDATION  ####################
     # ##########  VALUES  ##########
     if not isinstance(name, str):
-        raise TypeError(f"Argument name 'name' must be a string. Got {type(name).__name__}.")
+        raise TypeError(f"Error-message text 'name' must be a string. Got {type(name).__name__}.")
     elif not name.strip():
-        raise ValueError(f"Argument name 'name' must be a non-empty string. Got '{name}'.")
+        raise ValueError(f"Error-message text 'name' must be a non-empty string. Got '{name}'.")
     #
     if not isinstance(spec, (tuple, list, str, os.PathLike)):
         raise TypeError(f"Spectrum '{name}' must be a (wave, flux) pair of 1D arrays or a path (str or pathlib.Path) to a spectrum file. Got {type(spec).__name__}.")
@@ -997,14 +1006,14 @@ def _spectrum_file_format(
     basename, compressed, ext = _split_spectrum_name(file)  # Also checks that 'file' is a path
     #
     if not isinstance(name, str):
-        raise TypeError(f"Argument name 'name' must be a string. Got {type(name).__name__}.")
+        raise TypeError(f"Error-message text 'name' must be a string. Got {type(name).__name__}.")
     elif not name.strip():
-        raise ValueError(f"Argument name 'name' must be a non-empty string. Got '{name}'.")
+        raise ValueError(f"Error-message text 'name' must be a non-empty string. Got '{name}'.")
     #
     if not isinstance(label, str):
-        raise TypeError(f"Argument description 'label' must be a string. Got {type(label).__name__}.")
+        raise TypeError(f"Error-message text 'label' must be a string. Got {type(label).__name__}.")
     elif not label.strip():
-        raise ValueError(f"Argument description 'label' must be a non-empty string. Got '{label}'.")
+        raise ValueError(f"Error-message text 'label' must be a non-empty string. Got '{label}'.")
 
 
     # ####################  COMPUTATION  ####################

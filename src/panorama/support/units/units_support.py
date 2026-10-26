@@ -4,8 +4,9 @@ quantities shared by the public functions.
 
 Conventions shared by every function in this module:
     - Functions are private (leading underscore); they are used by the
-      public functions of 'panorama.units' (and 'panorama.obs' and
-      'panorama.spec') and are not exposed at the package level.
+      public functions of 'panorama.units' (and 'panorama.obs',
+      'panorama.spec' and 'panorama.prismas') and are not exposed at the
+      package level.
     - Validated values are returned as Python floats, so that every
       function works with the same numerical type.
     - All functions validate their inputs before computing.
@@ -84,9 +85,9 @@ def _check_real(
     -----
     Notes
     -----
-        - Shared by every public function of 'units' (and by 'obs' and
-          'spec'), so that the same argument gives the same error messages in
-          the whole package, e.g.:
+        - Shared by every public function of 'units' (and by 'obs', 'spec'
+          and 'prismas'), so that the same argument gives the same error
+          messages in the whole package, e.g.:
                 >>> Effective temperature 'teff' must be a real number (in K). Got str.
                 >>> Effective temperature 'teff' must be positive. Got -5.0.
                 >>> Hydrogen mass fraction 'H_frac' must lie in [0, 1]. Got 1.2.
