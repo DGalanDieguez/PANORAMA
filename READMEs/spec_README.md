@@ -62,7 +62,7 @@
 
 ## 3. Function Reference
 
-Each function lists its arguments in a **Parameters** table and its outputs in a **Returns** table.
+Each function lists its arguments in an **Inputs** table and its outputs in a **Returns** table.
 
 ### `readspec`
 ```python
@@ -77,6 +77,8 @@ Reads a 1D spectrum file and returns its wavelength and flux arrays. The format 
 * **Logarithmic scales:** `DC-FLAG = 1` (IRAF, log10 λ), `CTYPE1` ending in `-LOG` (FITS standard; Greisen et al. 2006), or ln λ values in files with `log` in their name (e.g. HERMES `*_log_merged_cf.fits` spectra; the name check is needed because their headers do not flag the logarithmic scale).
 
 Descending wavelength scales (e.g. negative `CDELT1`) are reversed. Every file written by [`writespec`](#writespec) can be read back, since both functions use the same extensions. Each format is read by a private function (`_read_ascii`, `_read_fits`; see [Section 5](#5-internal-structure)) that only returns the raw arrays, and `readspec` applies the generic checks to all of them.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -109,6 +111,8 @@ Writes a 1D spectrum and returns the path of the file. The format is chosen from
 
 The extensions are those accepted by [`readspec`](#readspec), so every file written can be read back; giving a spectrum file as `spec` converts it to the format of `output_file` (e.g. `writespec("HD886.fits", "HD886.txt")`). Descending wavelength arrays are reversed, repeated or unsorted wavelengths are rejected, and non-finite fluxes are kept with a warning. An existing file is only replaced with `overwrite=True`. [`rmvspec`](#rmvspec) and [`normspec`](#normspec) write their output spectra with this function (replacing the previous file, since they save repeatedly from their windows).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `spec` | `tuple[np.ndarray[float], np.ndarray[float]] \| list[np.ndarray[float]] \| str \| Path` | — | Spectrum to write: `(wave, flux)` tuple, `[wave, flux]` list or spectrum file (format conversion). |
@@ -136,6 +140,8 @@ plotspec(
     ) -> Figure
 ```
 Plots one or several spectra in an interactive window, with a check button per spectrum to show or hide it. Spectrum files are labeled with their file name (without extension) and `(wave, flux)` tuples as `Spectrum N`; duplicated labels get a ` (k)` suffix. If `show_lines` is `True`, the 40 diagnostic lines of O and B stars inside the wavelength range of the spectra (Balmer lines, He I, He II, and C, N, O, Mg and Si lines used in spectral classification; Walborn & Fitzpatrick 1990; Gray & Corbally 2009; Sota et al. 2011) are drawn as dotted vertical lines, colored by species (H I red, He I blue, He II purple; metals by element: C brown, N orange, O cyan, Mg olive, Si green) and labeled at the bottom of the axes; the labels follow their lines when zooming or panning in wavelength and stay at the bottom when zooming in flux. An extra check button, `Lines (OB-type stars)`, shows or hides them all. The lines are drawn at rest, and blends are labeled by their main component (e.g. `He I+II 4026`, `C III 4650` for C III 4647-4651). The figure is returned without saving it (it can be saved with [`savefig_pkl`](tex_README.md#savefig_pkl)), and it keeps a reference to the check buttons so that they keep working while it is open. With a non-interactive backend the figure is drawn but no window is opened; with the inline backend of Jupyter it is shown in the notebook (without working check buttons).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -180,6 +186,8 @@ In the table below, `<stem>` is `output_file` without its extension (and `.gz`),
 | `h` | Print the keyboard help. |
 | `s` / `S` | Save the cleaned spectrum to `output_file` (with `writespec`) / and the figure as `<stem>.png` plus its `<stem>.pkl` copy (see [`savefig_pkl`](tex_README.md#savefig_pkl)). |
 | `d` / `D` | Export the removed spans (merged) to `<stem>_rmvspans.txt` / the pending selected spans to `<stem>_selectedspans.txt` (columns `wave_min`, `wave_max`). |
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -238,6 +246,8 @@ The output spectrum is written with [`writespec`](#writespec) (ASCII or FITS, ch
 | `r` | Reset to the initial parameters. |
 | `w` | Save the output spectrum to `output_file` (with `writespec`). |
 | `q` / `?` | Close the window / print the controls. |
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

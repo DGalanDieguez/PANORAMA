@@ -93,7 +93,7 @@ The treatment of rotation is first order and spherical (statistical v sin i corr
 
 ## 3. Function Reference
 
-Each function lists its arguments in a **Parameters** table and its outputs in a **Returns** table. For functions that return a dictionary, the first row is the dictionary itself and the following rows are its keys.
+Each function lists its arguments in an **Inputs** table and its outputs in a **Returns** table. For functions that return a dictionary, the first row is the dictionary itself and the following rows are its keys.
 
 ### `wl2kmps`
 ```python
@@ -103,6 +103,8 @@ wl2kmps(
     ) -> float
 ```
 Converts a wavelength shift into a radial velocity with the first-order Doppler formula, v = (Δλ / λ0) c. Positive shifts are redshifts (receding source). Δλ and λ0 must refer to the same medium (both in air or both in vacuum). A warning is issued when |v| ≥ 1 % of c; in that regime use `wl2kmps_rel`. Inverse of `kmps2wl`.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -128,6 +130,8 @@ kmps2wl(
 ```
 Converts a radial velocity into a wavelength shift with the first-order Doppler formula, Δλ = (v / c) λ0. Also useful to express velocity widths (v sin i, macroturbulence, instrumental FWHM) in wavelength units at a given line. A warning is issued when |v| ≥ 1 % of c; in that regime use `kmps2wl_rel`. Inverse of `wl2kmps`.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `dkmps` | `int \| float` | — | Radial velocity [km/s]. |
@@ -151,6 +155,8 @@ wl2kmps_rel(
     ) -> float
 ```
 Converts a wavelength shift into a radial velocity with the special-relativistic Doppler formula for radial motion, β = ((1 + z)² − 1) / ((1 + z)² + 1), with z = Δλ / λ0 and v = β c. Any positive observed wavelength gives −1 < β < 1. Exact inverse of `kmps2wl_rel`; reduces to `wl2kmps` for |v| ≪ c.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -176,6 +182,8 @@ kmps2wl_rel(
 ```
 Converts a radial velocity into a wavelength shift with the special-relativistic Doppler formula, z = √((1 + β) / (1 − β)) − 1 and Δλ = z λ0. Exact inverse of `wl2kmps_rel`; reduces to `kmps2wl` for |v| ≪ c.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `dkmps` | `int \| float` | — | Radial velocity [km/s]; must satisfy \|v\| < c. |
@@ -199,6 +207,8 @@ vac2air(
 ```
 Converts a vacuum wavelength into its value in standard air (15 °C, 101325 Pa, dry, 0.03 % CO₂), λ_air = λ_vac / n, with the Edlén (1966) refractive index evaluated at the vacuum wavenumber. Accurate between 2000 and 10000 Å; a warning is issued outside this range (the formula diverges near 1603 Å). Inverse of `air2vac`.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `wl_vac` | `int \| float` | — | Vacuum wavelength [Å]; must be positive. |
@@ -220,6 +230,8 @@ air2vac(
     ) -> float
 ```
 Converts an air wavelength into its vacuum value, λ_vac = λ_air n(λ_vac), with the Edlén (1966) refractive index. Since n depends on the unknown λ_vac, the equation is solved by fixed-point iteration (five iterations), so that `air2vac` is the inverse of `vac2air` to floating-point precision in 2000–10000 Å. A warning is issued outside this range.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -243,6 +255,8 @@ R2kmps(
 ```
 Converts a spectral resolving power into a velocity resolution limit, 1.32 c / R. Here c / R is the velocity FWHM of the instrumental profile and 1.32 is an empirical factor giving the smallest broadening that can be considered resolved (e.g. a lower limit for a measurable v sin i). For R = 46000 it gives ≈ 8.6 km/s.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `R` | `int \| float` | — | Resolving power λ/Δλ [dimensionless]; must be positive. |
@@ -264,6 +278,8 @@ kmps2R(
     ) -> float
 ```
 Inverse of `R2kmps` with the same empirical factor, R = 1.32 c / v: the resolving power required to resolve a given velocity (e.g. ≈ 39600 for v sin i = 10 km/s).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -288,6 +304,8 @@ vthermal(
     ) -> dict[str, float]
 ```
 Computes the thermal (most probable) velocity of an ion, v_th = √(2 k_B T / (A m_u)), and the total Doppler velocity with microturbulence added in quadrature, v_D = √(v_th² + ξ²). The Doppler width is Δλ_D = (v_D / c) λ0 (see `kmps2wl`) and the Gaussian FWHM is 2 √(ln 2) Δλ_D. Macroturbulence is deliberately not included: like rotation, it is applied as a convolution of the emergent flux profile and its radial-tangential profile is not Gaussian. In OB stars thermal broadening is only relevant for H and He lines (v_th(H, 30 kK) ≈ 22 km/s vs. v_th(Si, 30 kK) ≈ 4 km/s).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -320,6 +338,8 @@ vescape(
 ```
 Computes the Newtonian photospheric escape velocity, v_esc = √(2 G M / R), and the effective escape velocity reduced by the radiative acceleration on free electrons, v_esc,eff = v_esc √(1 − Γ_e). For line-driven winds, v_∞ / v_esc,eff ≈ 2.6 for Teff ≳ 21 kK and ≈ 1.3 for cooler stars (bi-stability jump; Lamers et al. 1995).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `mass` | `int \| float` | — | Stellar mass [M☉]; must be positive. |
@@ -350,6 +370,8 @@ teffradius2logL(
 ```
 Bolometric luminosity from the Stefan-Boltzmann law, L = 4π R² σ Teff⁴, with the IAU 2015 nominal L☉ = 3.828 × 10²⁶ W (which implies Teff☉ ≈ 5772 K). Inverse of `logLteff2radius`.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `teff` | `int \| float` | — | Effective temperature [K]; must be positive. |
@@ -373,6 +395,8 @@ logLteff2radius(
     ) -> float
 ```
 Stellar radius from the Stefan-Boltzmann law, R = √(L / (4π σ Teff⁴)). Typical use: a photometric luminosity (Gaia distance + bolometric correction) combined with a spectroscopic Teff. Inverse of `teffradius2logL`.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -398,6 +422,8 @@ loggradius2mass(
 ```
 Spectroscopic mass, M = g R² / G. `logg` must be the gravitational (Newtonian) gravity: a gravity reduced by the centrifugal acceleration (rotating stars, see `logg_centrifugal`) or by radiation pressure (if not included in the model atmosphere, see `logg_radiative`) underestimates the mass. Spectroscopic masses of OB stars are often systematically lower than evolutionary ones (mass discrepancy; Herrero et al. 1992).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `logg` | `int \| float` | — | Gravitational (Newtonian) surface gravity, log10(g / [cm s⁻²]); a fitted gravity must be corrected first (`logg_centrifugal`, `logg_radiative`, `logg_rad_centrifugal`). |
@@ -422,6 +448,8 @@ logg_centrifugal(
     ) -> dict[str, float]
 ```
 Corrects a spectroscopic (effective) gravity for the centrifugal acceleration with the statistical first-order correction g_grav = g_eff + (v sin i)² / R (Herrero et al. 1992; Repolust et al. 2004). Since v sin i ≤ v_eq, the correction is a lower limit; it is ~0.01 dex for slow rotators and can reach ~0.1 dex for v sin i ≳ 250 km/s in giants and supergiants. Use `'logg_grav'` for spectroscopic masses and as input of `eddington`. Only the centrifugal term is corrected; see `logg_radiative` and `logg_rad_centrifugal` when the gravity is also reduced by radiation pressure.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -457,6 +485,8 @@ logg_radiative(
     ) -> dict[str, float]
 ```
 Corrects an effective gravity for the radiative acceleration on free electrons, g_grav = g_eff + g_rad with g_rad = κ_e σ Teff⁴ / c and κ_e = 0.20 (1 + X) cm² g⁻¹ (the same expression as in `eddington`). g_rad depends only on Teff and X, not on the mass or the radius, and is a lower limit to the total radiative acceleration. **Apply it only when `logg` does not already include radiation pressure:** model atmospheres that include it in the hydrostatic equilibrium (e.g. FASTWIND, CMFGEN, TLUSTY, ATLAS) already return the gravitational gravity with respect to radiation, and correcting them again counts g_rad twice. The correction is large for hot, luminous stars (g_rad ≈ 520 cm s⁻² at 30 kK, ≈ +0.18 dex at log g = 3.0).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -494,6 +524,8 @@ logg_rad_centrifugal(
     ) -> dict[str, float]
 ```
 Corrects an effective gravity for both the radiative and the centrifugal accelerations, g_grav = g_eff + g_rad + (v sin i)² / R, reusing `logg_radiative` and `logg_centrifugal` so that the three corrections are always consistent. The individual corrections in dex are not additive; compare `'g_rad'` and `'g_cen'` instead. Both terms are lower limits. The same applicability caveat as `logg_radiative` holds: for gravities fitted with FASTWIND, CMFGEN, TLUSTY or ATLAS, use `logg_centrifugal` alone. Passing `'logg_grav'` to `eddington` with the same `vsini` recovers g_eff = 10^logg.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -535,6 +567,8 @@ spec_luminosity(
 ```
 Spectroscopic luminosity ℒ = Teff⁴ / g ∝ L / M (Langer & Kudritzki 2014), in solar units: log(ℒ/ℒ☉) = 4 log Teff − log g − log ℒ☉, with log ℒ☉ ≈ 10.61 derived from the IAU 2015 nominal solar values. It is distance independent, proportional to the electron-scattering Eddington factor, and the vertical axis of the spectroscopic HR diagram (sHRD).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `teff` | `int \| float` | — | Effective temperature [K]; must be positive. |
@@ -558,6 +592,8 @@ logL2Mbol(
 ```
 Absolute bolometric magnitude, Mbol = 4.74 − 2.5 log(L/L☉), with the IAU 2015 Resolution B2 zero point (Mbol☉ = 4.74 mag). Combined with a bolometric correction, Mbol = M_V + BC_V. Inverse of `Mbol2logL`.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `logL` | `int \| float` | — | Bolometric luminosity, log(L/L☉). |
@@ -579,6 +615,8 @@ Mbol2logL(
     ) -> float
 ```
 Bolometric luminosity, log(L/L☉) = (4.74 − Mbol) / 2.5, with the IAU 2015 Resolution B2 zero point. Inverse of `logL2Mbol`.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -608,6 +646,8 @@ eddington(
 Computes the Eddington luminosity L_edd = 4π G M c / κ_e, the bolometric luminosity, the electron-scattering Eddington factor Γ_e = L_bol / L_edd, the radiative acceleration g_rad = κ_e σ Teff⁴ / c, the centrifugal acceleration g_cen = (v sin i)² / R (same expression as `logg_centrifugal`) and the effective gravity g_eff = g_grav − g_rad − g_cen. The opacity is that of electron scattering in a fully ionized H/He plasma, κ_e = 0.20 (1 + X) cm² g⁻¹, so Γ_e is a lower limit to the true Eddington factor. If no mass is given, the spectroscopic mass M = g_grav R² / G is used; in that case g_eff ≤ 0 is equivalent to the ΩΓ limit, Γ_e + (v sin i / v_kep)² ≥ 1 (Langer 1997, 1998). A warning is issued beyond the ΩΓ limit, where `'logg_eff'` is NaN.
 
 `logg` must be the **gravitational (Newtonian)** gravity. A fitted gravity is already reduced by the centrifugal acceleration (and, if the model atmosphere does not include radiation pressure, by g_rad): correct it first with `logg_centrifugal` (or `logg_rad_centrifugal`) and pass its `'logg_grav'`, otherwise g_cen (or g_rad) is subtracted twice. With that workflow `'g_eff'` recovers the fitted gravity. The treatment is spherical (`radius` taken as the equatorial radius, uniform flux) and v sin i ≤ v_eq, so g_cen is a lower limit to the equatorial centrifugal acceleration.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

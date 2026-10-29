@@ -76,7 +76,7 @@
 
 ## 3. Function Reference
 
-Each function lists its arguments in a **Parameters** table and its outputs in a **Returns** table. For functions that return a dictionary, the first row is the dictionary itself and the following rows are its keys (nested keys are written as `[name]['key']` or `'outer'[name]['key']`).
+Each function lists its arguments in an **Inputs** table and its outputs in a **Returns** table. For functions that return a dictionary, the first row is the dictionary itself and the following rows are its keys (nested keys are written as `[name]['key']` or `'outer'[name]['key']`).
 
 ### `nobib`
 ```python
@@ -86,6 +86,8 @@ nobib(
     ) -> list[str]
 ```
 Compares the citation keys of the compiled document (`.aux` file) with the keys defined in the `.bib` file and returns those never cited. Keys are compared case-sensitively, as LaTeX does. If the document uses `\nocite{*}`, a warning is issued and only explicit citations are compared. Typical use: cleaning an ADS-exported `.bib` file before submission. See [`missingbib`](#missingbib) for the opposite check and [`dupbib`](#dupbib) for duplicated entries.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -111,6 +113,8 @@ missingbib(
 ```
 Opposite check of `nobib`: keys cited in the document but not defined in the `.bib` file, which produce "Citation undefined" warnings and `?` marks in the PDF. Keys are compared case-sensitively, as LaTeX does (`sana2012` does not match `Sana2012`). The `\nocite{*}` wildcard is ignored without warning.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `aux_file` | `str \| Path` | — | LaTeX `.aux` file produced during compilation. |
@@ -133,6 +137,8 @@ dupbib(
     ) -> dict[str, dict]
 ```
 Finds keys defined more than once (case-insensitive, as BibTeX treats them; BibTeX stops with "Repeated entry" and biblatex silently keeps the first one) and DOIs shared by several keys, a common situation when merging `.bib` files from different projects. DOIs, given in braces or in quotes, are compared case-insensitively after removing any `https://doi.org/` (or `dx.doi.org`) prefix.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -161,6 +167,8 @@ queryviz(
 ```
 Queries a VizieR catalog for each object, requesting all its columns and keeping the first row returned (the first match within the default search radius; check crowded fields). Writes a table with `Object` followed by every catalog column (names taken from the first successful query), left-aligned and padded to `col_width` characters, in the order of the input. Values longer than `col_width` are not truncated and merge with the next column, so use wider columns for catalogs with long fields. Objects without data get `nan` in every column; queries that raise an error also issue a warning.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `input_file` | `str \| Path \| list[str]` | — | Non-empty list of object names, or text file with the names in the first column. |
@@ -186,6 +194,8 @@ querysimbad(
     ) -> dict[str, dict]
 ```
 Retrieves from SIMBAD the main identifier, ICRS coordinates (epoch J2000; degrees and sexagesimal), spectral type, Johnson B and V magnitudes, the observed B − V color and the parallax of each object. Works with both the TAP-based astroquery interface (≥ 0.4.8) and the legacy one. Objects not found and failed queries issue a warning and keep empty values. Since (B − V)₀ ≈ −0.26 to −0.32 mag for OB stars, `B-V` gives a first estimate of E(B − V) and A_V ≈ 3.1 E(B − V). SIMBAD spectral types are heterogeneous compilations: for OB stars prefer homogeneous classifications (e.g. GOSSS, IACOB) when available.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -221,6 +231,8 @@ read_pkl(
 ```
 Loads a pickled `matplotlib` figure (registered again with `pyplot`), optionally displays it, and returns it so that it can be edited and saved again (e.g. with `savefig_pkl`). Only open pickle files from trusted sources, since unpickling can execute arbitrary code. Pickled figures are tied to the `matplotlib` version that created them, and figures made with LaTeX text need LaTeX and the same preamble packages to be drawn again. With a non-interactive backend (e.g. `Agg`), `show=True` does not open any window; with the inline backend of Jupyter, the figure is shown in the notebook.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `filename` | `str \| Path` | — | Pickle file containing the figure. |
@@ -247,6 +259,8 @@ savefig_pkl(
     ) -> list[Path]
 ```
 Aligns the axis labels, saves the figure in each requested format with the PANORAMA conventions (`bbox_inches='tight'`, `pad_inches=0.01`) and writes a pickle copy before closing it. A known extension in `filename` (`.pkl` or one of the requested formats) is removed, so `"figs/HD91316_SiIII.pdf"` and `"figs/HD91316_SiIII"` are equivalent; any other suffix is kept as part of the base name (e.g. `"figs/SiIII_4552.62"` → `SiIII_4552.62.pdf`). A single format can be given as a string (e.g. `formats="png"`), and formats are case-insensitive (`".PDF"` → `pdf`).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

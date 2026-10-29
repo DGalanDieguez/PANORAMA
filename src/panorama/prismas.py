@@ -41,7 +41,7 @@ def find_models(
                 verbose     : bool = True
     ) -> list[dict]:
     """
-    Search the PRISMAS model catalog of a grid for the model atmospheres whose stellar parameters fall within the requested ranges, and optionally copy their files from a local directory.
+    Search the PRISMAS model catalog of a grid for the model atmospheres whose stellar parameters fall within the requested ranges.
 
     ----------
     Parameters
@@ -193,8 +193,13 @@ def find_models(
               memory; the first 'KM' request (about 850000 models) takes a
               few seconds.
 
-            - The 'T' catalog lists OSTAR2002 from 27500 K and BSTAR2006 up to
-              27000 K (their overlap is removed); the full listings of both
+            - The 'T' catalog lists BSTAR2006 from 15000 to 28000 K and
+              OSTAR2002 from 27500 to 55000 K: in the overlap of both subgrids
+              (27500-30000 K) the OSTAR2002 models are recommended, and only
+              the BSTAR2006 models at 28000 K are kept, as the upper node of
+              the interpolation for 27000 K < Teff < 27500 K (e.g. 27400 K is
+              interpolated between BSTAR2006 at 27000 and 28000 K, so that
+              the two subgrids are never mixed). The full listings of both
               subgrids are only used for the figure of 'needed_models'.
 
             - New grids are added in '_grid_registry' (support module),
@@ -270,7 +275,7 @@ def find_models(
         if crit_value is not None and crit_name not in grid_info['params']:
             raise ValueError(f"Selection criterion '{crit_name}' must be None for the '{grid}' grid ({grid_info['name']}), which defines only {', '.join(repr(p) for p in grid_info['params'])}. Got {crit_value!r}.")
     #
-    teff   =_check_criterion(teff, "teff", "Effective temperature", unit="in K", constraint="positive")
+    teff   = _check_criterion(teff, "teff", "Effective temperature", unit="in K", constraint="positive")
     logg   = _check_criterion(logg, "logg", "Surface gravity", unit="log10(g / [cm s^-2])")
     met    = _check_criterion(met, "met", "Metallicity", unit=grid_info['met_unit'], constraint=grid_info['met_constraint'])
     alpha  = _check_criterion(alpha, "alpha", "Alpha enhancement", unit="[alpha/M] in dex")
@@ -455,10 +460,11 @@ def needed_models(
 
         output_name : str | Path, optional
             Path and base name of the two output files,
-            '<output_name>_<grid>_needed.dat' (model atmospheres needed) and
-            '<output_name>_<grid>_missing.dat' (needed grid entries inside
-            the grid, with their model), e.g. "results/HD_91316" ->
-            'results/HD_91316_T_needed.dat'. A file extension is removed
+            '<output_name>_<grid>_tocompute.dat' (model atmospheres to
+            compute with PRISMAS) and '<output_name>_<grid>_missing.dat'
+            (needed grid entries, with their model, '-' if outside the grid
+            or 'dummy' for dummy entries), e.g. "results/HD_91316" ->
+            'results/HD_91316_T_tocompute.dat'. A file extension is removed
             ("results/HD_91316.dat" gives the same names). Their directory
             must exist and existing files are overwritten. See Notes.
             Default is "spamms" (current directory).
@@ -531,19 +537,20 @@ def needed_models(
 
                 - 'dummy' : list[str]
                     Dummy entries (disk patches of SPAMMS), neither plotted
-                    nor matched.
+                    nor matched, but listed in 'missing_file'.
 
                 - 'invalid' : list[str]
                     Entries that do not follow the SPAMMS naming of the
                     grid.
 
-                - 'needed_file' : Path
-                    File with the model atmospheres needed
-                    ('<output_name>_<grid>_needed.dat').
+                - 'tocompute_file' : Path
+                    File with the model atmospheres to compute with PRISMAS
+                    ('<output_name>_<grid>_tocompute.dat').
 
                 - 'missing_file' : Path
-                    File with the needed grid entries inside the grid and
-                    their models ('<output_name>_<grid>_missing.dat').
+                    File with the needed grid entries and their models, '-'
+                    for the entries outside the grid and 'dummy' for the
+                    dummy entries ('<output_name>_<grid>_missing.dat').
 
                 - 'fig' : Figure | None
                     Figure of the needed entries on the grid (None if no
@@ -585,7 +592,7 @@ def needed_models(
     -----
         1. WORKFLOW
             - The function runs the two steps of a SPAMMS grid check:
-                >>> 1. SPAMMS check : needed grid entries and their models ('needed', 'models', 'needed_file', 'missing_file').
+                >>> 1. SPAMMS check : needed grid entries and their models ('needed', 'models', 'tocompute_file', 'missing_file').
                 >>> 2. Figure       : needed entries on the grid nodes ('fig').
 
             - Example:
@@ -594,29 +601,32 @@ def needed_models(
 
         2. OUTPUT FILES
             - The two files are named after 'output_name' and the grid:
-                >>> '<output_name>_<grid>_needed.dat'  : model atmospheres needed.
-                >>> '<output_name>_<grid>_missing.dat' : needed grid entries inside the grid.
+                >>> '<output_name>_<grid>_tocompute.dat' : model atmospheres to compute with PRISMAS.
+                >>> '<output_name>_<grid>_missing.dat'   : needed grid entries and their models.
 
-            - '<output_name>_<grid>_needed.dat': the model atmospheres
+            - '<output_name>_<grid>_tocompute.dat': the model atmospheres
               (without extension) of the needed entries inside the grid, one
               per line, alphabetically sorted and without duplicates or
               header (e.g. the input of 'find_models' or of an HTCondor
               submission).
 
-            - '<output_name>_<grid>_missing.dat': the needed entries inside
-              the model atmosphere grid, one per line with two columns:
-              SPAMMS grid entry and model atmosphere (without extension).
-              Comment lines start with '#', so that the first column can be
-              read as a list of names.
+            - '<output_name>_<grid>_missing.dat': every needed entry inside
+              or outside the model atmosphere grid, including the dummy
+              entries, sorted by increasing Teff (then log g, composition and
+              microturbulence), one per line with two columns:
+              SPAMMS grid entry and model atmosphere (without extension), '-'
+              for the entries outside the grid or 'dummy' for the dummy
+              entries. Comment lines start with '#', so that the first column
+              can be read as a list of names.
 
-            - Entries outside the grid, dummy and invalid entries are in
-              neither file (see 'not_in_grid', 'dummy' and 'invalid'). Both
-              files are always written (empty, or with only the header, if no
-              entry is in the grid).
+            - Invalid entries are in neither file (see 'invalid'), and dummy
+              entries are not in the '_tocompute.dat' file. Both files are
+              always written (empty, or with only the header, if no entry is
+              needed).
 
             - The last file extension of 'output_name' is removed (e.g.
               'HD_91316.dat' -> 'HD_91316', 'HD_91316.txt' -> 'HD_91316'), so
-              that the names always end in '_<grid>_needed.dat' and
+              that the names always end in '_<grid>_tocompute.dat' and
               '_<grid>_missing.dat'.
 
         3. GRIDS AND ENTRY NAMES
@@ -637,14 +647,16 @@ def needed_models(
               scripts needed by the input files must exist.
 
             - Each input file is run with the Python interpreter of the
-              current session as 'python <script> -i <input file> -c -n 5'
-              from 'spamms_dir'; with '-c', SPAMMS only checks the grid and
-              prints the missing grid points. If the input file is not in
-              'spamms_dir', it is copied there for the run and always removed
-              afterwards, also if SPAMMS fails or the run is interrupted; an
-              input file already there with the same content is used and
-              kept, and a different file with the same name is never
-              overwritten (that run fails).
+              current session as 'python <script> -i <input file> -c -n
+              <n_cores>' from 'spamms_dir', with every core allocated to the
+              process (all the cores of the computer, or only those assigned
+              to the job by HTCondor / Slurm); with '-c', SPAMMS only checks
+              the grid and prints the missing grid points. If the input file
+              is not in 'spamms_dir', it is copied there for the run and
+              always removed afterwards, also if SPAMMS fails or the run is
+              interrupted; an input file already there with the same content
+              is used and kept, and a different file with the same name is
+              never overwritten (that run fails).
 
             - The progress is printed as one line per input file (with the
               number of missing grid points and of SPAMMS warnings). After
@@ -658,7 +670,8 @@ def needed_models(
               the reason of each failure (whatever 'verbose').
 
             - Entries with Teff = 0 or 1000 K are dummy entries (disk
-              patches), neither plotted nor matched.
+              patches), neither plotted nor matched, but listed in the
+              '_missing.dat' file with model 'dummy'.
 
         5. MODEL ATMOSPHERES
             - The models are found with 'find_models' (same catalogs and
@@ -666,21 +679,27 @@ def needed_models(
               [alpha/M] and, for 'KM', [C/M]; Z / Zsun for 'T') of each
               entry.
 
-            - TLUSTY: OSTAR2002 is used for Teff > 27000 K (except 28000 and
-              29000 K) and BSTAR2006 otherwise, falling back to the other
-              subgrid when the model only exists there. The selection catalog
-              of 'T' lists BSTAR2006 only up to 27000 K, so with it the
-              entries at 28000 and 29000 K are reported in 'not_in_grid'.
+            - TLUSTY: OSTAR2002 is used for Teff >= 27500 K (recommended in
+              the overlap of both subgrids, 27500-30000 K) and BSTAR2006
+              otherwise, falling back to the other subgrid when the model
+              only exists there. The exception is 28000 K, taken from
+              BSTAR2006: a Teff between 27000 and 27500 K is interpolated
+              between the BSTAR2006 models at 27000 and 28000 K, so that the
+              two subgrids are never mixed. From 27500 K the OSTAR2002 nodes
+              are used (e.g. 28500 K between 27500 and 30000 K), so SPAMMS
+              never requests 29000 K, which is not in the selection catalog.
 
         6. FIGURE
             - Grid nodes and needed entries (black crosses in the grid, red
-              crosses outside it), with reversed axes (hot / low gravity to
-              the left / top). For 'T', the nodes are read from the full
+              circled crosses outside it, both larger than the nodes), with
+              reversed axes (hot / low gravity to the left / top) and the
+              legend above the axes. For 'T', the nodes are read from the full
               OSTAR2002 and BSTAR2006 listings ('T_OSTAR02_models.dat' and
-              'T_BSTAR06_models.dat'), which also contain the models of their
-              overlap removed from the catalog used for the selection; for
-              Kurucz, from the catalog of the grid. The figure is returned
-              open, so that it can be saved with 'savefig_pkl'.
+              'T_BSTAR06_models.dat'), which also contain the BSTAR2006
+              models at 29000 and 30000 K, the only ones missing from the
+              catalog used for the selection; for Kurucz, from the catalog of
+              the grid. The figure is returned open, so that it can be saved
+              with 'savefig_pkl'.
 
     ----------
     References
@@ -703,7 +722,7 @@ def needed_models(
 
     # ##### PANORAMA #####
     from .support.obs.obs_support import _check_bool
-    from .support.prismas.prismas_support import _check_directory, _check_grid, _decode_spamms, _DUMMY_TEFF, _grid_registry, _match_key, _message_block, _PARAM_TOL, _plot_needed_models, _run_spamms, _short_list, _SPAMMS_SCRIPTS
+    from .support.prismas.prismas_support import _allocated_cores, _check_directory, _check_grid, _decode_spamms, _DUMMY_TEFF, _grid_registry, _match_key, _message_block, _PARAM_TOL, _plot_needed_models, _run_spamms, _short_list, _sort_key, _SPAMMS_SCRIPTS
     from .support.tex.tex_support import _check_input_file, _check_output_file
 
 
@@ -740,12 +759,12 @@ def needed_models(
     grid_info = _grid_registry()[grid]
     #
     if not isinstance(output_name, (str, os.PathLike)):
-        raise TypeError(f"Output base name 'output_name' must be a path (str or pathlib.Path) without the '_<grid>_needed.dat' ending. Got {type(output_name).__name__}.")
+        raise TypeError(f"Output base name 'output_name' must be a path (str or pathlib.Path) without the '_<grid>_tocompute.dat' ending. Got {type(output_name).__name__}.")
     elif not os.fspath(output_name).strip() or not Path(output_name).name or os.fspath(output_name).endswith(("/", os.sep)):
         raise ValueError(f"Output base name 'output_name' must contain a file name (e.g. 'results/HD_91316'). Got '{output_name}'.")
-    output_base  = Path(output_name).with_suffix('')  # 'HD_91316.dat' -> 'HD_91316'
-    needed_file  = _check_output_file(Path(f"{output_base}_{grid}_needed.dat"))
-    missing_file = _check_output_file(Path(f"{output_base}_{grid}_missing.dat"))
+    output_base    = Path(output_name).with_suffix('')  # 'HD_91316.dat' -> 'HD_91316'
+    tocompute_file = _check_output_file(Path(f"{output_base}_{grid}_tocompute.dat"))
+    missing_file   = _check_output_file(Path(f"{output_base}_{grid}_missing.dat"))
     #
     show = _check_bool(show, "show", "Display flag")
     #
@@ -754,15 +773,15 @@ def needed_models(
 
     # ##########  DICTIONARY  ##########
     results_dict = {
-                    'needed'       : [],
-                    'per_file'     : {},
-                    'models'       : [],
-                    'not_in_grid'  : [],
-                    'dummy'        : [],
-                    'invalid'      : [],
-                    'needed_file'  : None,
-                    'missing_file' : None,
-                    'fig'          : None,
+                    'needed'         : [],
+                    'per_file'       : {},
+                    'models'         : [],
+                    'not_in_grid'    : [],
+                    'dummy'          : [],
+                    'invalid'        : [],
+                    'tocompute_file' : None,
+                    'missing_file'   : None,
+                    'fig'            : None,
                    }
 
 
@@ -776,7 +795,7 @@ def needed_models(
     # ####################  COMPUTATION  ####################
     # ##########  SPAMMS RUNS  ##########
     if verbose:
-        print(f"SPAMMS grid check ('-c') of {len(input_files)} input file(s)")
+        print(f"SPAMMS grid check ('-c', {_allocated_cores()} cores) of {len(input_files)} input file(s)")
     name_width      = max(len(f.name) for f in input_files)  # Columns of the progress lines
     script_width    = max(len(p.name) for p in run_scripts.values())
     count_width     = len(str(len(input_files)))
@@ -877,14 +896,19 @@ def needed_models(
 
     # ####################  OUTPUT  ####################
     # ##########  OUTPUT FILES  ##########
-    with open(needed_file, "w", encoding="utf-8") as f:  # Model atmospheres, without header
+    with open(tocompute_file, "w", encoding="utf-8") as f:  # Model atmospheres, without header
         f.write(''.join(model + "\n" for model in sorted({m['model'] for m in results_dict['models']})))
     #
-    entry_width = max([len(m['name']) for m in results_dict['models']] + [len("# Grid entry")])
+    entry_models = {m['name']: m['model'] for m in results_dict['models']}  # Grid entry -> model atmosphere (inside the grid)
+    entry_models.update({name: "-" for name in results_dict['not_in_grid']})  # '-': no model atmosphere in the grid
+    entry_models.update({name: "dummy" for name in results_dict['dummy']})  # Dummy entries (disk patches): listed, but not computed
+    entry_width  = max([len(name) for name in entry_models] + [len("# Grid entry")])
+    entry_keys   = {name: (_sort_key(_decode_spamms(name, grid), ('teff', 'logg', 'met', 'alpha', 'carbon', 'vmic')), name) for name in entry_models}  # NaN values last
+    entry_order  = sorted(entry_models, key=entry_keys.get)  # Increasing Teff, then log g, composition and vmic (not alphabetical: 'T3500' < 'T10000')
     with open(missing_file, "w", encoding="utf-8") as f:
-        f.write(f"# Needed grid entries inside the {grid_info['name']} grid: {len(results_dict['models'])}\n")
+        f.write(f"# Needed grid entries of the {grid_info['name']} grid: {len(entry_models)} ({len(results_dict['models'])} inside the grid, {len(results_dict['not_in_grid'])} outside it, model '-'; {len(results_dict['dummy'])} dummy, model 'dummy')\n")
         f.write(f"{'# Grid entry':<{entry_width}}  Model\n")
-        f.write(''.join(f"{m['name']:<{entry_width}}  {m['model']}\n" for m in results_dict['models']))
+        f.write(''.join(f"{name:<{entry_width}}  {entry_models[name]}\n" for name in entry_order))
 
 
     # ##########  SUMMARY  ##########
@@ -906,7 +930,7 @@ def needed_models(
 
 
         # ##### FILES #####
-        files      = (("Models needed written to", needed_file), ("Entries in the grid written to", missing_file))
+        files      = (("Models to compute written to", tocompute_file), ("Needed entries written to", missing_file))
         file_width = max(len(label) for label, _ in files)
         print()
         for label, path in files:
@@ -915,9 +939,9 @@ def needed_models(
 
     # ##########  RESULTS  ##########
     results_dict.update({
-                         'needed'       : needed,
-                         'needed_file'  : needed_file,
-                         'missing_file' : missing_file,
+                         'needed'         : needed,
+                         'tocompute_file' : tocompute_file,
+                         'missing_file'   : missing_file,
                         })
     return results_dict
 
@@ -1029,12 +1053,13 @@ def rename_tars(
                         >>> 'dry_run' : would be renamed ('dry_run' = True).
                         >>> 'done'    : already named as in modes 0 / 1.
                         >>> 'exists'  : target exists and 'overwrite' is False.
-                        >>> 'skipped' : same target as another archive.
+                        >>> 'skipped' : same target as another archive of the same subgrid.
                         >>> 'error'   : unreadable archive (e.g. truncated) or unwritable target.
 
                 - 'reason' : str
-                    Explanation for 'exists', 'skipped' and 'error' ('' for
-                    the other statuses).
+                    Explanation for 'exists', 'skipped' and 'error', and for
+                    the archives renamed with a subgrid tag (see Notes); ''
+                    otherwise.
 
     ------
     Raises
@@ -1081,6 +1106,17 @@ def rename_tars(
               'needed_models'. Archives that follow neither naming of the
               grid are ignored.
 
+            - TLUSTY archives of different subgrids with the same Teff, log g
+              and Z / Zsun (e.g. 'G30000g300v10' and 'BG30000g300v2', in the
+              overlap of OSTAR2002 and BSTAR2006) would get the same name of
+              modes 0 / 1. Both are kept: a warning is issued and the subgrid
+              tag is appended to each name, e.g.
+              'T30000_G3.00_Z1.000_V10_OSTAR02.tar.gz' and
+              'T30000_G3.00_Z1.000_V10_BSTAR06.tar.gz' ('reason' gives the
+              other archive). Archives of the same subgrid with the same
+              target (e.g. the same file in two subdirectories with
+              'recursive') are 'skipped', keeping the first one.
+
         2. MICROTURBULENCE
             - The microturbulence cannot be recovered from the HPC names (in
               TLUSTY names, 'v' is the microturbulence of the model
@@ -1115,9 +1151,10 @@ def rename_tars(
               integer fixes it (e.g. 1 for a serial run).
 
         5. RE-RUNS
-            - Archives already named as in modes 0 / 1 are reported as
-              'done', so the function can safely be run several times on the
-              same directory. Temporary '.part' files are never listed.
+            - Archives already named as in modes 0 / 1 (also with a subgrid
+              tag) are reported as 'done', so the function can safely be run
+              several times on the same directory. Temporary '.part' files
+              are never listed.
     """
 
     # ####################  MODULES & PACKAGES  ####################
@@ -1170,12 +1207,15 @@ def rename_tars(
 
     # ##########  DECODING  ##########
     archives = []
+    subgrids = {}  # Source -> subgrid of its model ('' for Kurucz and for the archives already renamed)
+    tags     = tuple(f"_{tag}" for tag in (grid_info['subgrid_tags'] or {}).values())  # E.g. '_OSTAR02'
     for path in paths:
-        stem = path.name[:-len(".tar.gz")]
+        stem      = path.name[:-len(".tar.gz")]
+        base_stem = next((stem[:-len(tag)] for tag in tags if stem.endswith(tag)), stem)  # Name without subgrid tag
 
 
         # ##### OPTION 1: MODES 0 / 1 NAME #####
-        params = _decode_spamms(stem, grid)  # Same format as the SPAMMS grid entries
+        params = _decode_spamms(base_stem, grid)  # Same format as the SPAMMS grid entries
         if params is not None:
             target = path
             status = "done"
@@ -1186,8 +1226,9 @@ def rename_tars(
             params = _decode_model(stem, grid)
             if params is None:  # Not an archive of the grid
                 continue
-            target = (output_dir if output_dir is not None else path.parent) / f"{_archive_name(params, grid, vmic)}.tar.gz"
-            status = ''  # Still to be processed
+            target         = (output_dir if output_dir is not None else path.parent) / f"{_archive_name(params, grid, vmic)}.tar.gz"
+            status         = ''  # Still to be processed
+            subgrids[path] = params['subgrid']
         archives.append({
                          'source' : path,
                          'target' : target,
@@ -1202,6 +1243,31 @@ def rename_tars(
 
 
     # ##########  DUPLICATED TARGETS  ##########
+    # ##### DIFFERENT SUBGRIDS #####
+    # Models of different subgrids with the same parameters (e.g. 'G30000g300v10' and 'BG30000g300v2') would get the same
+    # name: both are kept, with the subgrid tag appended to their names, so that no model replaces the other
+    tagged = []
+    if grid_info['subgrid_tags'] is not None:
+        groups = {}  # Target -> archives still to be processed with that target
+        for a in archives:
+            if a['status'] == '':
+                groups.setdefault(a['target'], []).append(a)
+        for target, group in groups.items():
+            if len({subgrids[a['source']] for a in group}) < 2:  # One subgrid: handled below
+                continue
+            for a in group:
+                tag    = grid_info['subgrid_tags'][subgrids[a['source']]]
+                others = ", ".join(str(b['source'].relative_to(tardir)) for b in group if b is not a)
+                a.update({
+                          'target' : target.with_name(f"{target.name[:-len('.tar.gz')]}_{tag}.tar.gz"),
+                          'reason' : f"tag '_{tag}' added: same name as {others}",
+                         })
+                tagged.append(a)
+    if tagged:
+        warnings.warn(f"{len(tagged)} archive(s) of different subgrids of the {grid_info['name']} grid share the same stellar parameters and would get the same name; the subgrid tag is appended to their names (e.g. '{tagged[0]['target'].name}').", stacklevel=2)
+
+
+    # ##### SAME SUBGRID #####
     seen = {}  # Target -> source of the first archive with that target
     for a in archives:
         if a['status'] == '':

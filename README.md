@@ -172,14 +172,17 @@ Some notebooks need extra resources, such as internet access; the examples that 
 
 | Version | Date | Title | Description |
 |---|---|---|---|
-| [`v1.2.0`](#713-v120--prismas-module) | 2026-10-25 | PRISMAS Module | New `prismas` module: model-atmosphere selection, SPAMMS grid checks and renaming of PRISMAS archives. |
-| [`v1.0.1`](#712-v101--binaralt-weather-alarms) | 2026-10-22 | BinarAlt Weather Alarms | Weather-limit alarms in BinarAlt, bug fixes and updated user guide. |
-| [`v1.0.0`](#711-v100--initial-release) | 2026-10-24 | Initial Release | First public release of PANORAMA. |
+| [`v1.2.1`](#714-v121--spamms-grid-check-outputs) | 2026-10-29 | SPAMMS Grid Check Outputs | New output files and figure of `needed_models`, BSTAR2006 models at 28000 K in the TLUSTY catalog, SPAMMS run on every allocated core and subgrid tags in `rename_tars`. |
+| [`v1.2.0`](#713-v120--prismas-module) | 2026-10-26 | PRISMAS Module | New `prismas` module: model-atmosphere selection, SPAMMS grid checks and renaming of PRISMAS archives. |
+| [`v1.0.1`](#712-v101--binaralt-weather-alarms) | 2026-10-24 | BinarAlt Weather Alarms | Weather-limit alarms in BinarAlt, bug fixes and updated user guide. |
+| [`v1.0.0`](#711-v100--initial-release) | 2026-10-21 | Initial Release | First public release of PANORAMA. |
 
 <br>
 
 ## 7.1. Version v1.
 ### 7.1.1. v1.0.0 — Initial Release
+*Released on 2026-10-21.*
+
 First public release of PANORAMA, a Python package for the spectroscopic analysis of massive stars.
 
 Included modules:
@@ -192,6 +195,8 @@ Each module includes its README and an executed Jupyter demo notebook.
 
 
 ### 7.1.2. v1.0.1 — BinarAlt Weather Alarms
+*Released on 2026-10-24.*
+
 Changes in the `obs` module (`binaralt`):
 * New alarms that warn the user when the weather limits are exceeded.
 * Several bug fixes.
@@ -199,6 +204,8 @@ Changes in the `obs` module (`binaralt`):
 
 
 ### 7.1.3. v1.2.0 — PRISMAS Module
+*Released on 2026-10-26.*
+
 New module `prismas` ([`READMEs/prismas_README.md`](READMEs/prismas_README.md)), to prepare and post-process the runs of PRISMAS, the code that computes grids of synthetic spectra from model atmospheres for SPAMMS:
 * `find_models`: selection of the model atmospheres of a grid (Kurucz-Castelli `'KC'`, Kurucz-Mészáros `'KM'` and TLUSTY OSTAR2002/BSTAR2006 `'T'`) by single values, lists or ranges of *T*<sub>eff</sub>, log *g*, metallicity, [α/M] and [C/M], from the model catalogs distributed with PANORAMA (`src/panorama/support/prismas/models_grids/`). The names can be written to a file (e.g. for an HTCondor submission) and the model files located and copied from a local copy of the grid.
 * `needed_models`: grid check of SPAMMS (`-c`) for one or several input files, with the grid entries needed, the model atmospheres that PRISMAS can compute, the entries outside the grid, the output files and a figure of the needed entries on the grid nodes.
@@ -209,6 +216,29 @@ New module `prismas` ([`READMEs/prismas_README.md`](READMEs/prismas_README.md)),
 Other changes:
 * Internal validation helpers of `obs` and `spec`: same error messages as the rest of the package for their own arguments (the name and description of the argument being checked), and empty texts rejected.
 * Internal docstrings and comments updated to list every module that reuses the shared helpers of `tex`, `units`, `obs` and `spec`.
+
+
+### 7.1.4. v1.2.1 — SPAMMS Grid Check Outputs
+*Released on 2026-10-29.*
+
+Changes in the `prismas` module (`needed_models`):
+* The list of model atmospheres to compute with PRISMAS is now written to `<output_name>_<grid>_tocompute.dat` (formerly `_needed.dat`), and the returned key `'needed_file'` is renamed to `'tocompute_file'`.
+* `<output_name>_<grid>_missing.dat` now lists every grid entry needed by SPAMMS (formerly only those inside the grid): its model atmosphere if it is inside the grid, `-` if it is outside it, and `dummy` for the dummy entries (disk patches), which are still neither plotted nor computed. The entries are sorted by increasing *T*<sub>eff</sub> (then log *g*, composition and microturbulence) instead of alphabetically.
+* The SPAMMS grid check (`-c`) is run on every core allocated to the process (all the cores of the computer, or only those assigned to the job by HTCondor / Slurm) instead of a fixed number.
+* Larger grid figure (6.69 × 4.8 in): larger grid nodes, needed entries drawn above them, entries outside the grid shown as circled red crosses, and the legend placed above the axes.
+
+Changes in the `prismas` module (TLUSTY grid, `'T'`):
+* The selection catalog `T_OSTAR02+BSTAR06models.dat` now includes the BSTAR2006 models at 28000 K. In the overlap of both subgrids (27500-30000 K) the OSTAR2002 models are used, except for 27000 K < *T*<sub>eff</sub> < 27500 K, which is interpolated between the BSTAR2006 models at 27000 and 28000 K so that models of different subgrids are never mixed.
+* New section *TLUSTY subgrids and their overlap* in the [`prismas` README](READMEs/prismas_README.md#tlusty-subgrids-and-their-overlap), explaining which subgrid is used at each temperature.
+
+Changes in the `prismas` module (`rename_tars`):
+* TLUSTY archives of different subgrids with the same *T*<sub>eff</sub>, log *g* and Z / Z<sub>☉</sub> (e.g. `G30000g300v10` and `BG30000g300v2`), which would get the same name, are now both kept: a warning is issued and the subgrid tag is appended to each name (`..._OSTAR02.tar.gz` and `..._BSTAR06.tar.gz`). Before, only the first one in alphabetical order (the BSTAR2006 archive) was renamed and the other was skipped. Archives with a subgrid tag are recognized as already renamed (`'done'`) in later runs.
+
+Other changes:
+* Legend of the grid figure built from paired symbols and labels.
+* `prismas` README and demo notebook updated to the new file names, keys, catalog and subgrid tags; the demo now runs the SPAMMS grid check with a *mock* SPAMMS script when no SPAMMS installation is available.
+* Module READMEs: **Inputs:** label before the parameter table of every function.
+* `tex` demo: expected query warnings captured and printed without internal paths.
 
 ---
 <br>

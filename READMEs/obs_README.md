@@ -125,7 +125,7 @@
 
 ## 3. Function Reference
 
-Each function lists its arguments in a **Parameters** table and its outputs in a **Returns** table. For functions that return a dictionary, the first row is the dictionary itself and the following rows are its keys (keys of a nested dictionary are written as `'outer'[name]['key']`).
+Each function lists its arguments in an **Inputs** table and its outputs in a **Returns** table. For functions that return a dictionary, the first row is the dictionary itself and the following rows are its keys (keys of a nested dictionary are written as `'outer'[name]['key']`).
 
 ### `sky_dist`
 ```python
@@ -135,6 +135,8 @@ sky_dist(
     ) -> dict[str, float]
 ```
 Angular separation between two positions (Vincenty formula, accurate at all separations) and position angle of the second one with respect to the first, measured from North through East. If the positions are given in different frames, `coords2` is transformed into the frame of `coords1`. Typical use: checking for visual companions or contaminating sources within the fiber or slit aperture, or matching targets between catalogs.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -161,6 +163,8 @@ coord_info(
     ) -> dict[str, float | str]
 ```
 Expresses a position in ICRS decimal degrees, sexagesimal notation and Galactic coordinates (coordinates in another frame are first transformed into ICRS). OB stars are strongly concentrated toward the Galactic plane, so a large |b| for an OB star of known distance can point to a runaway origin (Blaauw 1961).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -193,6 +197,8 @@ bary_corr(
     ) -> dict[str, SkyCoord | Observer | np.ndarray | list[str] | float]
 ```
 Barycentric (and heliocentric) radial-velocity correction of one or several observations, computed with `astropy` at mid-exposure if `exptime` is given, together with their JD, MJD, HJD (UTC) and BJD_TDB, the recommended time stamp for time-series analysis (Eastman et al. 2010). Measured velocities are corrected as rv_bary = rv + v_bary + rv v_bary / c; to first order, a spectrum is moved to the barycentric frame with λ_bary = λ_obs (1 + v_bary / c). The correction reaches ~30 km/s (Earth's orbit) plus ~0.5 km/s (Earth's rotation) and changes by up to ~0.1 km/s per hour, so the mid-exposure time matters for long exposures. Many reduction pipelines already apply the correction or store it in the header: check before correcting, to avoid applying it twice.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -232,6 +238,8 @@ estimate_exposure(
 ```
 Exposure time for a target SNR in the photon-noise (source-dominated) regime, SNR ∝ √t: t_final = t_init (SNR_target / SNR_init)². For faint targets, bright sky or short exposures (read-out and sky-noise regimes) the time is underestimated. The reference exposure should be taken under similar conditions (airmass, seeing, Moon, setup). Inverse of [`estimate_SNR`](#estimate_snr).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `snr_init` | `int \| float` | — | SNR of a reference exposure; positive. |
@@ -258,6 +266,8 @@ estimate_SNR(
 ```
 SNR for a new exposure time in the photon-noise regime: SNR_final = SNR_init √(t_final / t_init). In read-out or sky-noise dominated regimes the SNR is overestimated. Inverse of [`estimate_exposure`](#estimate_exposure).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `snr_init` | `int \| float` | — | SNR of a reference exposure; positive. |
@@ -281,6 +291,8 @@ combine_SNR(
     ) -> float
 ```
 SNR of the inverse-variance (1/σ²) weighted co-addition of spectra with the same continuum level and independent noise, SNR_comb = √(Σ SNR_i²); N spectra of equal SNR give SNR √N. A plain (unweighted) average of spectra with different SNR gives a lower value, so the result is an upper limit in that case.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -306,6 +318,8 @@ fits_catalog(
 ```
 Scans a folder recursively for the reduced spectra of an instrument (HERMES: `*_HRF_OBJ_ext_CosmicsRemoved_log_merged_cf.fit*`), reads their headers and writes one row per file, sorted by observing night and file name. Exposures taken before the instrument split hour (09 UTC for HERMES) are assigned to the night that started on the previous date. The airmass is read from `AIRMASS` or computed from the telescope altitude (`TELALT`) as sec z. The barycentric correction is computed for every file with [`bary_corr`](#bary_corr), at mid-exposure (`DATE-OBS` + `EXPTIME` / 2), from the header `RA` and `DEC` [deg] and the instrument site; if they are missing, the barycentric values are `NaN` and a warning is issued (a missing `EXPTIME` is taken as 0 s). Unreadable files issue a warning and are skipped, and an existing `output_file` is overwritten with a warning.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `folder` | `str \| Path` | — | Root directory scanned recursively. |
@@ -330,6 +344,8 @@ night_info(
     ) -> dict[str, Observer | str | float | None]
 ```
 Sun and Moon ephemerides of an observing night: sunset and sunrise (−0.833°), end and start of the civil (−6°), nautical (−12°) and astronomical (−18°) twilights, local midnight, night length (sunset to sunrise), dark time (Sun below −18°), local sidereal time at midnight (objects with RA ≈ LST transit at midnight), and Moon illumination, altitude, rise and set. Moonrise and moonset are only reported if they happen during the night, as in [`visibility`](#visibility). Bright time (Moon illumination ≳ 50–70 % with the Moon up) is usually enough for high-SNR spectroscopy of bright OB stars, while faint targets need dark or gray time.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -376,6 +392,8 @@ visibility(
     ) -> dict[str, Observer | str | float | np.ndarray | dict | Figure]
 ```
 Altitude of one or several targets from sunset to sunrise (2-min grid; ±12 h around midnight in polar day or night), plotted against UTC with an airmass axis, the Moon and `min_alt`. The day plus civil, nautical and astronomical twilights are shaded (without gaps between areas), the Sun events are marked on top of the plot, and a table below the legend gives the times of the night events, the night length and the dark time. For each target it gives the time of maximum altitude, the observable window (dark time with altitude ≥ `min_alt`, interpolated between grid points) and its duration, and the separation from the Moon at midnight. A dictionary is read as a single target (named `'Target'`) when all its keys are coordinate keys (`'ra'`, `'dec'`, `'right_ascension'`, `'declination'`, `'unit'`, `'frame'`), and as `{name: coordinates}` otherwise. Airmass sec z is accurate to ~1 % for z < 70°.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -426,6 +444,8 @@ annual_visibility(
 ```
 Altitude and observable dark hours of a target on each night of a period, sampled every 5 min from mean local noon to the next mean local noon (crossings interpolated, so the hours agree with [`visibility`](#visibility) and [`night_info`](#night_info) to a few seconds). The upper panel shows the maximum altitude in dark time and the altitude at local midnight; the lower panel, the observable hours and the total dark time; both show the Moon illumination at local midnight. The date axis runs from `start_date` to `start_date` + `n_nights` days (the morning after the last night), with both limits labeled. Typical use: choosing the semester of a proposal and estimating how many epochs of a binary can be secured. With 365 nights it takes about 20 s.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `coords` | `str \| tuple[str \| float, str \| float] \| list[str \| float] \| dict \| SkyCoord` | — | Target coordinates. |
@@ -471,6 +491,8 @@ periodic_event(
     ) -> dict[str, SkyCoord | float | Observer | str | list[str | float | bool | int]]
 ```
 Upcoming events of the linear ephemeris T(E) = T0 + (phase + E) P and whether each one is observable (dark time with the target above `min_alt`). With `hjd0` the ephemeris is linear in HJD and each event is converted to UTC with its own heliocentric light-travel time (up to ±8.3 min); with `jd0` it is applied directly in JD. The uncertainty of the predictions grows as σ_T(E) ≈ √(σ_T0² + E² σ_P²).
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -519,6 +541,8 @@ obs_phase(
 ```
 Phase φ = ((t − T0) mod P) / P of a periodic object at one or several times, using HJD for both t and T0 if `hjd0` is given and JD otherwise.
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `coords` | `str \| tuple[str \| float, str \| float] \| list[str \| float] \| dict \| SkyCoord` | — | Target coordinates. |
@@ -562,6 +586,8 @@ obs_phase_night(
 ```
 Range of phases covered on each night while the target is observable (between the astronomical twilights, 2-min grid, with the `min_alt` crossings interpolated), plotted per night with the UTC start and end of each window, and as the cumulative coverage of the run. Nights whose window is longer than the period are flagged as full coverage. Where the Sun never reaches −18°, a warning is issued and the night is reported as not observable. Useful to check whether a campaign samples the whole orbit (e.g. for SB2 disentangling or light-curve coverage).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `coords` | `str \| tuple[str \| float, str \| float] \| list[str \| float] \| dict \| SkyCoord` | — | Target coordinates. |
@@ -604,6 +630,8 @@ telescope_pointing(
 ```
 Azimuth, elevation, cardinal direction, airmass, hour angle, local sidereal time and parallactic angle of a target, plus its separation from the Moon, shown in a compass diagram and an elevation diagram. The hour angle uses the apparent right ascension of date (TETE frame), so precession and nutation since J2000 are taken into account. With a slit spectrograph, align the slit with the parallactic angle at large airmass (≳ 1.3) to avoid wavelength-dependent losses from atmospheric differential refraction (Filippenko 1982).
 
+**Inputs:**
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `coords` | `str \| tuple[str \| float, str \| float] \| list[str \| float] \| dict \| SkyCoord` | — | Target coordinates. |
@@ -641,6 +669,8 @@ binaralt(
     ) -> None
 ```
 Launches **BinarAlt**, a browser-based planning tool with target visibility, ephemerides, lunar information, live observatory weather, exposure scheduling, an interactive exposure timeline and an observation-plan table and logbook. The interface (`binaralt.html`) is served on 127.0.0.1, on a free port chosen by the operating system, and opened in a new tab of the default web browser (not inline in the console or the notebook). It can be launched from a script, the Python console or a local Jupyter notebook, but not from a remote Jupyter server (JupyterHub, Colab, SSH) unless the port is forwarded. It requires a modern web browser with JavaScript enabled. The astronomical calculations run in the browser (Astronomy Engine, bundled in the page, so they work offline); the local server only relays the live weather requests to the observatory websites, which do not allow direct requests from the page. Targets can be imported from and exported to CSV files with the columns `Name`, `RA`, `Dec`, `Period (d)`, `HJD0`, `JD0`, `Nº exposures`, `Exp. (s)`, `Own overhead (s)`, `Own min. alt. (°)` and `Priority (1-5)` (example: [`Demos/data_and_results/obs/data/northcircumpolar_targets.csv`](../Demos/data_and_results/obs/data/northcircumpolar_targets.csv)). A detailed user guide is available in [`BinarAlt_UserGuide.pdf`](BinarAlt_UserGuide.pdf); a copy is installed with the package next to the interface (`src/panorama/support/obs/`), from where it is opened with the question-mark icon in the corner of the interface.
+
+**Inputs:**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

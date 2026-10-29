@@ -237,7 +237,7 @@ All arguments must be validated, in the order of the signature, before any compu
 <br>
 
 ### 2.14. Module READMEs
-Each public module has a `READMEs/<module>_README.md` (model: `tex_README.md`) with: title, badges, a one-sentence summary and a link back to the main README; *Table of Contents*; *Overview* (including the conventions shared by the module); *Function Summary* (one table per group of functions); *Function Reference* (signature, description, parameter table with units and defaults, returns and exceptions); *Dependencies*; *Internal Structure*; *Demo*; and *References*. Signatures are copied from the code (without `def` and the final colon, closing parenthesis indented four spaces), and parameter types, return types, defaults, keys and exceptions must match the code exactly.
+Each public module has a `READMEs/<module>_README.md` (model: `tex_README.md`) with: title, badges, a one-sentence summary and a link back to the main README; *Table of Contents*; *Overview* (including the conventions shared by the module); *Function Summary* (one table per group of functions); *Function Reference* (signature, description, and the labels **Inputs:**, **Returns:** and **Raises:**, each on its own line: the first two followed by a blank line and their table, the parameter table with units and defaults, and the last one by the exceptions); *Dependencies*; *Internal Structure*; *Demo*; and *References*. Signatures are copied from the code (without `def` and the final colon, closing parenthesis indented four spaces), and parameter types, return types, defaults, keys and exceptions must match the code exactly.
 
 <br>
 

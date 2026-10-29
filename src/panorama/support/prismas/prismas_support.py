@@ -65,16 +65,14 @@ _PARAM_TOL = 1e-6
 """
 - SPAMMS script of each input file, keyed by the ending of the input file name
   without extension (case-insensitive; tried in this order, '' matches any
-  other file), number of parallel processes of the grid check ('-n') and
-  sentence that precedes the list of missing grid points in the output of
-  'spamms.py -c'
+  other file), and sentence that precedes the list of missing grid points
+  in the output of 'spamms.py -c'
 """
 _SPAMMS_SCRIPTS = {
                    '_disk'    : "spamms_disk.py",
                    'noreflec' : "spamms_noreflec.py",
                    ''         : "spamms.py",
                   }
-_SPAMMS_NCPUS   = 5
 _SPAMMS_PHRASE  = "The missing grid points are:"
 
 
@@ -176,6 +174,13 @@ def _grid_registry(
                     (signed, 'm' / 'p'), 'z' (unsigned metallicity) and
                     'vmic'.
 
+                - 'subgrid_tags' : dict[str, str] | None
+                    A dictionary keyed by subgrid name (e.g. 'OSTAR2002');
+                    each value is the tag appended by 'rename_tars' to the
+                    name of an archive (e.g. '_OSTAR02') when archives of
+                    different subgrids would get the same name. None for
+                    grids without subgrids.
+
                 - 'plot_catalogs' : dict[str, str] | None
                     A dictionary keyed by legend label; each value is the
                     file name of a catalog (in 'support/prismas/models_grids/')
@@ -230,6 +235,7 @@ def _grid_registry(
                         'spamms_decoder' : _spamms_kc,
                         'subgrid_order'  : None,
                         'archive_name'   : "T{teff}_G{logg}_M{met}_a{alpha}_V{vmic}",
+                        'subgrid_tags'   : None,
                         'plot_catalogs'  : None,
                        },
                 'KM' : {
@@ -246,6 +252,7 @@ def _grid_registry(
                         'spamms_decoder' : _spamms_km,
                         'subgrid_order'  : None,
                         'archive_name'   : "T{teff}_G{logg}_M{met}_a{alpha}_c{carbon}_V{vmic}",
+                        'subgrid_tags'   : None,
                         'plot_catalogs'  : None,
                        },
                 'T'  : {
@@ -262,6 +269,10 @@ def _grid_registry(
                         'spamms_decoder' : _spamms_tlusty,
                         'subgrid_order'  : _tlusty_subgrid_order,
                         'archive_name'   : "T{teff}_G{logg}_Z{z}_V{vmic}",
+                        'subgrid_tags'   : {
+                                            'OSTAR2002' : "OSTAR02",
+                                            'BSTAR2006' : "BSTAR06",
+                                           },
                         'plot_catalogs'  : {
                                             'OSTAR2002' : "T_OSTAR02_models.dat",
                                             'BSTAR2006' : "T_BSTAR06_models.dat",
@@ -1491,8 +1502,8 @@ def _tlusty_subgrid_order(
     Returns
     -------
         subgrids : tuple[str, str]
-            ('OSTAR2002', 'BSTAR2006') for Teff > 27000 K (except 28000 and
-            29000 K), and ('BSTAR2006', 'OSTAR2002') otherwise.
+            ('OSTAR2002', 'BSTAR2006') for Teff >= 27500 K, except 28000 K,
+            and ('BSTAR2006', 'OSTAR2002') otherwise (also at 28000 K).
 
     ------
     Raises
@@ -1506,17 +1517,27 @@ def _tlusty_subgrid_order(
     -----
     Notes
     -----
-        - In the catalogs distributed with PANORAMA, OSTAR2002 is sampled
-          every 2500 K from 27500 to 55000 K and BSTAR2006 every 1000 K from
-          15000 to 30000 K, so 28000 and 29000 K only exist in BSTAR2006; the
-          second subgrid is a fallback when the model only exists there.
+        - OSTAR2002 is sampled every 2500 K from 27500 to 55000 K and
+          BSTAR2006 every 1000 K from 15000 to 30000 K. In their overlap
+          (27500-30000 K) the OSTAR2002 models are recommended, so OSTAR2002
+          is preferred from 27500 K.
+
+        - Exception at 28000 K: a Teff between 27000 and 27500 K (e.g.
+          27400 K) is interpolated between the BSTAR2006 models at
+          Ti = 27000 K and Ts = 28000 K, so that models of different subgrids
+          are never mixed in the interpolation. The BSTAR2006 model is
+          therefore used at 28000 K (OSTAR2002 has no model there).
 
         - The selection catalog of 'T' ('T_OSTAR02+BSTAR06models.dat') lists
-          BSTAR2006 only up to 27000 K, so with it the entries at 28000 and
-          29000 K have no model (see 'needed_models').
+          BSTAR2006 from 15000 to 28000 K and OSTAR2002 from 27500 to
+          55000 K. The other BSTAR2006 models of the overlap (29000 and
+          30000 K) are never needed: from 27500 K, SPAMMS interpolates
+          between the OSTAR2002 nodes (e.g. 28500 K between 27500 and
+          30000 K), so it never requests 29000 K. The second subgrid is a
+          fallback when the model only exists there.
 
-        - The two temperatures are compared exactly, since Teff is decoded
-          from integer names.
+        - The temperatures are compared exactly, since Teff is decoded from
+          integer names.
     """
 
     # ####################  MODULES & PACKAGES  ####################
@@ -1530,7 +1551,7 @@ def _tlusty_subgrid_order(
 
 
     # ####################  OUTPUT  ####################
-    if teff > 27000 and teff not in (28000.0, 29000.0):
+    if teff >= 27500 and teff != 28000:  # 28000 K: upper BSTAR2006 node for 27000 K < Teff < 27500 K
         return ("OSTAR2002", "BSTAR2006")
     return ("BSTAR2006", "OSTAR2002")
 
@@ -1964,9 +1985,12 @@ def _run_spamms(
     -----
         1. RUN
             - SPAMMS is run with the Python interpreter of the current
-              session as 'python <script> -i <input> -c -n <_SPAMMS_NCPUS>'
-              from 'spamms_dir', with every path absolute so that relative
-              paths given by the user are not resolved twice.
+              session as 'python <script> -i <input> -c -n <n_cores>' from
+              'spamms_dir', with every path absolute so that relative paths
+              given by the user are not resolved twice. 'n_cores' is the
+              number of cores allocated to the process ('_allocated_cores'):
+              every core of the computer, or only those assigned to the job
+              by HTCondor / Slurm.
 
             - If the input file is not in 'spamms_dir', it is copied there
               for the run and always removed afterwards: also if the copy is
@@ -2052,7 +2076,7 @@ def _run_spamms(
                 result['error'] = f"the input file could not be copied to the SPAMMS directory ({e})"
                 return result
         process = subprocess.run(
-                                 [sys.executable, str(script_file), "-i", str(run_input), "-c", "-n", str(_SPAMMS_NCPUS)],
+                                 [sys.executable, str(script_file), "-i", str(run_input), "-c", "-n", str(_allocated_cores())],  # Every allocated core
                                  capture_output=True,
                                  text=True,
                                  cwd=spamms_dir  # SPAMMS must run from its own directory
@@ -2178,18 +2202,24 @@ def _plot_needed_models(
               overlapping subgrids remain visible.
 
         2. NEEDED ENTRIES
-            - Black crosses if their model is in the grid and red crosses
-              otherwise (outside the grid).
+            - Black crosses if their model is in the grid, and red crosses
+              surrounded by a red circle otherwise (outside the grid), drawn
+              larger than the grid nodes and on top of them.
+
+            - The legend is placed above the axes, so that it never hides
+              grid nodes or needed entries.
 
         3. AXES
             - The axes are reversed (hot / low gravity to the left / top)
               and span the grid nodes and the needed entries.
 
-            - The figure is two A&A columns wide (17 cm = 6.69 in).
+            - The figure is two A&A columns wide (17 cm = 6.69 in) and
+              4.8 in high.
     """
 
     # ####################  MODULES & PACKAGES  ####################
     # ##### PYTHON #####
+    from matplotlib.legend_handler import HandlerTuple
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -2237,37 +2267,89 @@ def _plot_needed_models(
 
     # ####################  PLOTTING  ####################
     # ##########  FIGURE  ##########
-    fig, ax = plt.subplots(figsize=(6.69, 3.0))  # Two A&A columns (17 cm)
+    fig, ax = plt.subplots(figsize=(6.69, 4.8))  # Two A&A columns (17 cm) wide
 
 
     # ##########  GRID NODES  ##########
+    handles = []  # Legend symbols, filled together with 'labels' so that both lists always stay paired
+    labels  = []
     for i, (label, xy) in enumerate(nodes.items()):
-        ax.scatter(
-                   xy[:, 0] / 1e3,  # K -> kK
-                   xy[:, 1],
-                   s=max(9 - 3 * i, 2),  # Decreasing sizes: overlapping subgrids remain visible
-                   marker=markers[i % len(markers)],
-                   color=f"C{i % 10}",
-                   linewidths=0,
-                   label=f"{label} ({len(xy)})"
-                  )
+        handles.append(ax.scatter(
+                                  xy[:, 0] / 1e3,  # K -> kK
+                                  xy[:, 1],
+                                  s=max(30 - 12 * i, 10),  # Decreasing sizes (30, 18, ... points^2): overlapping subgrids remain visible
+                                  marker=markers[i % len(markers)],
+                                  color=f"C{i % 10}",
+                                  linewidths=0,
+                                  zorder=1
+                                 ))
+        labels.append(f"{label} ({len(xy)})")
 
 
     # ##########  NEEDED ENTRIES  ##########
-    for mask, color, label in ((in_grid, "black", "Needed, in the grid"), (~in_grid, "red", "Needed, outside the grid")):
-        if mask.any():
-            ax.scatter(teff[mask] / 1e3, logg[mask], s=20, marker="x", color=color, linewidths=0.6, label=f"{label} ({mask.sum()})")
+    # ##### INSIDE THE GRID #####
+    if in_grid.any():
+        handles.append(ax.scatter(
+                                  teff[in_grid] / 1e3,
+                                  logg[in_grid],
+                                  s=80,  # Larger than the grid nodes
+                                  marker="x",
+                                  color="black",
+                                  linewidths=1.5,
+                                  zorder=3
+                                 ))
+        labels.append(f"Needed, in the grid ({int(in_grid.sum())})")
+
+
+    # ##### OUTSIDE THE GRID #####
+    if (~in_grid).any():
+        cross  = ax.scatter(
+                            teff[~in_grid] / 1e3,
+                            logg[~in_grid],
+                            s=80,
+                            marker="x",
+                            color="red",
+                            linewidths=1.5,
+                            zorder=3
+                           )
+        circle = ax.scatter(
+                            teff[~in_grid] / 1e3,
+                            logg[~in_grid],
+                            s=260,  # Circle around the cross
+                            marker="o",
+                            facecolors="none",
+                            edgecolors="red",
+                            linewidths=1.2,
+                            zorder=3
+                           )
+        handles.append((circle, cross))  # Drawn as one symbol in the legend (HandlerTuple)
+        labels.append(f"Needed, outside the grid ({int((~in_grid).sum())})")
 
 
     # ##########  AXES  ##########
     all_teff = np.concatenate([xy[:, 0] for xy in nodes.values()] + [teff]) / 1e3  # Grid nodes and needed entries, in kK
     all_logg = np.concatenate([xy[:, 1] for xy in nodes.values()] + [logg])
-    ax.set_xlim(all_teff.max() + 1, all_teff.min() - 1)  # Reversed: hot to the left
-    ax.set_ylim(all_logg.max() + 0.2, all_logg.min() - 0.2)  # Reversed: low gravity at the top
+    ax.set_xlim(all_teff.max() + 1.5, all_teff.min() - 1.5)  # Reversed: hot to the left; margin for the circled crosses
+    ax.set_ylim(all_logg.max() + 0.25, all_logg.min() - 0.25)  # Reversed: low gravity at the top
     ax.set_xlabel(r"$T_{\rm eff}$ [kK]")
     ax.set_ylabel(r"$\log g$ [dex]")
     ax.tick_params(which="both", direction="out", top=True, right=True)
-    ax.legend(fontsize=7, loc="best", frameon=False)
+
+
+    # ##########  LEGEND  ##########
+    # Above the axes, so that it never hides grid nodes or needed entries
+    ax.legend(
+              handles,
+              labels,
+              handler_map={tuple: HandlerTuple(ndivide=1)},  # Circle and cross overlaid in a single symbol
+              loc="lower center",
+              bbox_to_anchor=(0.5, 1.01),
+              ncol=len(handles),
+              fontsize=8,
+              frameon=False,
+              handletextpad=0.3,
+              columnspacing=1.2
+             )
     fig.tight_layout()
 
 
