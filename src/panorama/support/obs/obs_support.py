@@ -1754,6 +1754,108 @@ def _solar_midnight(
 
 
 # ==============================
+def _sun_horizon(
+                 observer : Observer
+    ) -> Quantity:
+    """
+    Compute the altitude of the Sun's center at sunset and sunrise for an observatory, including the dip of the horizon due to its elevation.
+
+    ----------
+    Parameters
+    ----------
+        observer : Observer
+            Observatory (see '_get_observer'); its elevation above sea level
+            is read from its location.
+
+    -------
+    Returns
+    -------
+        horizon : Quantity
+            Geometric altitude of the Sun's center at sunset and sunrise, in
+            degrees: -(0.833 + 0.0293 sqrt(h)) deg, with h the elevation in
+            meters (e.g. -2.27 deg at 2396 m, the ORM).
+
+    ------
+    Raises
+    ------
+        TypeError
+            If 'observer' is not an astroplan Observer.
+
+    -----
+    Notes
+    -----
+        1. DEFINITION
+            - At sea level, sunset and sunrise happen with the Sun's center
+              at -0.833 deg: the upper limb touches the horizon (solar
+              semidiameter, 16') once the standard refraction at the horizon
+              (34') is taken into account.
+
+            - From an elevation h above sea level, the visible (sea) horizon
+              lies below the astronomical horizon by the dip of the horizon,
+              1.76' sqrt(h [m]) = 0.0293 deg sqrt(h [m]), which includes the
+              standard terrestrial refraction. The Sun is then seen to set
+              later and rise earlier: about 7 min at 2400 m in the Canary
+              Islands. Elevations below sea level are taken as 0 m (no dip).
+
+            - The same definition is used by BinarAlt (default 'Sunset /
+              Sunrise altitude', computed from the elevation of the selected
+              observatory), and agrees with the sunset and sunrise of the ING
+              STARALT tool to 1-2 min.
+
+        2. SCOPE
+            - It applies only to sunset and sunrise, which mark when the
+              solar disk is visible above the observer's horizon, so they
+              depend on the line of sight from the observatory.
+
+            - It does not apply to the civil, nautical and astronomical
+              twilights (-6, -12 and -18 deg): they measure how much
+              scattered sunlight is left in the sky above the observer, which
+              depends on how deep the Sun is below the local horizontal plane
+              (the geometric altitude of its center), not on the visible
+              horizon. An elevation of a few km is negligible against the
+              height of the scattering layers of the atmosphere, so the
+              twilights, and therefore the dark time, keep their standard
+              definition.
+
+            - It assumes an unobstructed horizon down to the sea (or a flat
+              plain), as at the ORM and the OT. Where mountains raise the
+              local horizon (e.g. CAHA, OHP), the real sunset can be earlier
+              and the real sunrise later than computed.
+
+        3. USE
+            - Shared by 'night_info' and 'visibility', the functions that
+              compute sunset and sunrise.
+    """
+
+    # ####################  MODULES & PACKAGES  ####################
+    from astroplan import Observer
+    import astropy.units as u
+    import numpy as np
+
+
+    # ####################  INPUTS VALIDATION  ####################
+    # ##########  VALUES  ##########
+    if not isinstance(observer, Observer):
+        raise TypeError(f"Observatory 'observer' must be an astroplan Observer. Got {type(observer).__name__}.")
+
+
+    # ####################  PARAMETERS  ####################
+    sea_level_horizon = 0.8333  # Solar semidiameter (16') + horizontal refraction (34'), in deg
+    dip_coefficient   = 0.0293  # Dip of the horizon per sqrt(m), in deg (1.76')
+
+
+    # ####################  COMPUTATION  ####################
+    elevation = max(float(observer.location.height.to(u.m).value), 0.)  # m above sea level; no dip below sea level
+    dip       = dip_coefficient * np.sqrt(elevation)  # Dip of the visible horizon, in deg
+
+
+    # ####################  OUTPUT  ####################
+    return -(sea_level_horizon + dip) * u.deg
+
+
+
+
+# ==============================
 def _reference_epochs(
                       hjd0     : float | None,
                       jd0      : float | None,
@@ -2295,6 +2397,8 @@ class _WeatherService:
             - Observatorio del Roque de los Muchachos: 'not', 'tng', 'gtc',
               'int', 'magic', 'liverpool'.
 
+            - Calar Alto Observatory: 'caha'.
+
         2. RESULTS
             - Every result has the same keys: 'ok', 'source_url',
               'temperature', 'humidity', 'wind_speed', 'wind_direction',
@@ -2303,6 +2407,11 @@ class _WeatherService:
 
             - Wind directions follow the meteorological convention: the
               direction the wind blows FROM (0 deg / N = from the north).
+
+            - Every numeric value carries its unit, and the precipitation is
+              always 'True' or 'False'; '-' only means
+              that the station does not provide the value (see
+              '_with_units').
 
         3. THREADS
             - The cache is protected by a lock, since the server handles
@@ -2387,6 +2496,7 @@ class _WeatherService:
                          'int'       : self._fetch_int,
                          'magic'     : self._fetch_magic,
                          'liverpool' : self._fetch_liverpool,
+                         'caha'      : self._fetch_caha,
                         }
 
 
@@ -2394,7 +2504,8 @@ class _WeatherService:
     def _fetch(
                self,
                url     : str,
-               timeout : int | float = 8
+               timeout : int | float = 8,
+               post    : bool = False
         ) -> str:
         """
         Fetch a URL and return its response as UTF-8 text.
@@ -2407,6 +2518,11 @@ class _WeatherService:
 
             timeout : int | float, optional
                 Timeout of the request in seconds. Default is 8.
+
+            post : bool, optional
+                If True, the URL is requested with an empty POST instead of a
+                GET (for data endpoints that the station page itself requests
+                by POST, e.g. that of CAHA). Default is False.
 
         -------
         Returns
@@ -2428,6 +2544,7 @@ class _WeatherService:
         # ##########  PARAMETERS  ##########
         request = urllib.request.Request(
                                          url,
+                                         data=b'' if post else None,  # An empty body makes urllib send a POST
                                          headers={'User-Agent' : "Mozilla/5.0 (BinarAlt weather proxy)"}  # Some sites reject requests without a browser-like agent
                                         )
 
@@ -2477,8 +2594,10 @@ class _WeatherService:
                         if not available).
 
                     - 'precipitation' : str
-                        Rain / precipitation state or amount ('-' if not
-                        available).
+                        'True' if precipitation is detected and 'False' if
+                        not ('-' if not available). Each fetcher may give an
+                        amount or a state of its own (e.g. '0.0 mm', 'Dry');
+                        '_with_units' converts it to 'True' / 'False'.
 
                     - 'dust' : str
                         Dust concentration in µg/m³ ('-' if not available).
@@ -2642,6 +2761,85 @@ class _WeatherService:
             return None
         return value if math.isfinite(value) else None
     #
+    @staticmethod
+    def _with_units(
+                    result : dict[str, bool | str]
+        ) -> dict[str, bool | str]:
+        """
+        Make every value of a normalized result carry its unit, and the precipitation be 'True' or 'False'.
+
+        ----------
+        Parameters
+        ----------
+            result : dict[str, bool | str]
+                Normalized result of a fetcher (see '_blank').
+
+        -------
+        Returns
+        -------
+            result : dict[str, bool | str]
+                The same dictionary, modified in place.
+
+        -----
+        Notes
+        -----
+            - The ordinal sign 'º' that some pages use as a degree sign (e.g.
+              '10.2 ºC' on the GTC page) is replaced with '°'.
+
+            - The precipitation is always written as 'False' (dry) or 'True'
+              (precipitation detected), whatever the station gives: an
+              amount, with or without unit (e.g. '0.0 mm', or '0.0' on the
+              MAGIC page), is 'False' only if it is 0; a state is 'False' if
+              it is 'dry', 'clear', 'false' or 'no' (any case), and 'True'
+              otherwise (e.g. 'Wet', 'DRY' -> 'False', 'Raining').
+
+            - Any other bare number gets the unit of its field, i.e. the unit
+              in which every fetcher reports it (°C, %, m/s, µg/m³ and
+              arcsec; see '_blank'). Wind directions given as a compass point
+              (e.g. 'SW') are left as they are.
+
+            - '-' (value not provided by the station) is never changed.
+        """
+
+        # ##########  MODULES & PACKAGES  ##########
+        import re
+
+
+        # ##########  PARAMETERS  ##########
+        units = {  # Unit in which every fetcher reports each field
+                 'temperature'    : " °C",
+                 'humidity'       : " %",
+                 'wind_speed'     : " m/s",
+                 'wind_direction' : "°",
+                 'dust'           : " µg/m³",
+                 'seeing'         : "\"",
+                }
+        bare_number = r"-?\d+(?:\.\d+)?"  # A number with nothing else
+        dry_states  = ("dry", "clear", "false", "no")  # Yes/no states without precipitation (lowercase)
+
+
+        # ##########  COMPUTATION  ##########
+        for key in (*units, 'precipitation'):
+            value = result.get(key)
+            if not isinstance(value, str) or value.strip() in ('', "-"):  # Not provided by the station
+                if isinstance(value, str):
+                    result[key] = "-"
+                continue
+            value = value.replace("º", "°").strip()  # Ordinal sign used as a degree sign
+            if key == 'precipitation':
+                amount = re.match(r"-?\d+(?:\.\d+)?", value)  # Leading number of an amount, e.g. '0.0 mm'
+                if amount:  # Amount, with or without unit
+                    value = "False" if float(amount.group(0)) == 0 else "True"
+                else:  # Yes/no state of the sensor
+                    value = "False" if value.lower() in dry_states else "True"
+            elif re.fullmatch(bare_number, value):
+                value = f"{value}{units[key]}"
+            result[key] = value
+
+
+        # ##########  OUTPUT  ##########
+        return result
+    #
     def _tng_last(
                   self,
                   field : str
@@ -2691,7 +2889,7 @@ class _WeatherService:
         ----------
             station : str
                 Station code (case-insensitive): 'song', 'stella', 'speculoos',
-                'not', 'tng', 'gtc', 'int', 'magic' or 'liverpool'.
+                'not', 'tng', 'gtc', 'int', 'magic', 'liverpool' or 'caha'.
 
             force : bool, optional
                 If True (manual refresh button of BinarAlt's WEATHER panel),
@@ -2746,7 +2944,7 @@ class _WeatherService:
 
         # ##### FETCH #####
         try:
-            payload = fetcher()
+            payload = self._with_units(fetcher())  # Units checked for every station
         except Exception as e:  # A fetcher must never break the HTTP response
             payload          = self._blank('')  # Every field '-'
             payload['error'] = str(e)
@@ -3113,6 +3311,10 @@ class _WeatherService:
 
             - The wind direction is shown as an image / CSS element rather
               than a number, so it is not reported.
+
+            - The rain reading has no unit on the page (and its explanation
+              page, rain.html, is no longer available), so it is reported as
+              'False' for 0 and 'True' otherwise (see '_with_units').
         """
 
         # ##########  MODULES & PACKAGES  ##########
@@ -3153,7 +3355,7 @@ class _WeatherService:
                 pass
 
         if values['Rain']:
-            result['precipitation'] = values['Rain']
+            result['precipitation'] = values['Rain']  # No unit on the page: turned into 'True' / 'False' by '_with_units'
 
         if values['TNG Dust']:
             result['dust'] = f"{values['TNG Dust']} µg/m³"
@@ -3222,7 +3424,120 @@ class _WeatherService:
 
         # ##########  OUTPUT  ##########
         return result
+    #
+    def _fetch_caha(
+                    self
+        ) -> dict[str, bool | str]:
+        """
+        Fetch the weather and seeing of the Calar Alto Observatory (CAHA).
 
+        -------
+        Returns
+        -------
+            result : dict[str, bool | str]
+                Normalized result (see '_blank').
+
+        -----
+        Notes
+        -----
+            1. SOURCE
+                - The public page is the CAHA "Seeing and Extinction Monitor"
+                  (www.caha.es/instruments/seeing-and-extinction-monitor),
+                  whose table (WDXI/WDXING/seeing.php) is filled in by its
+                  script seeing.js with an AJAX POST request to getSeeing.php
+                  every 10 s. This fetcher reads that response directly.
+
+                - The response is a single line of space-separated values, at
+                  fixed positions (0-based, as read by seeing.js): temperature
+                  in °C (7), relative humidity in % (13), wind speed in m/s
+                  (16), wind direction in degrees (18), dust in µg/m³ (49) and
+                  the V-band seeing of the last RoboDIMM reading in arcsec
+                  (61). The other positions hold the display colors of each
+                  value, the dew point, gust, pressure, cloud sensor, Sun and
+                  Moon data and the date, status, star and airmass of the DIMM
+                  reading.
+
+                - Rain is not shown by seeing.js: it is read from position 27,
+                  the first of the two rain amounts in mm (27 and 28) that
+                  follow the cloud sensor and its colors, as on the CAHA
+                  weather page ("30\" Measure" and "Total Rain").
+
+            2. FIELDS
+                - Non-numeric values leave their field as '-': e.g.
+                  '--------' for a missing DIMM reading, or 'wet' for the dust
+                  when its monitor cannot measure (high humidity). Seeing
+                  values outside (0, 10) arcsec are discarded.
+
+                - The precipitation is read as the rain amount in mm and, like
+                  every precipitation, reported as 'False' (0.0 mm) or 'True'
+                  (see '_with_units'); 'True' is a precipitation alert in
+                  BinarAlt.
+
+                - The seeing is the last DIMM reading, whatever its age (the
+                  DIMM only measures at night, with clear sky).
+
+            3. AVAILABILITY
+                - 'ok' is True only if at least one field was read, so that
+                  an empty or changed response is reported as a failed
+                  reading in BinarAlt.
+
+                - The positions are those of seeing.js (version 2.1, with the
+                  dust values added in 2025); if CAHA changes them, the fields
+                  will be wrong or empty, and this fetcher must be updated.
+        """
+
+        # ##########  PARAMETERS  ##########
+        source_url = "https://www.caha.es/instruments/seeing-and-extinction-monitor"
+        data_url   = "https://www.caha.es/WDXI/WDXING/getSeeing.php"
+        result     = self._blank(source_url)
+        positions  = {  # Result key -> position of the value in the response
+                      'temperature'    : 7,
+                      'humidity'       : 13,
+                      'wind_speed'     : 16,
+                      'wind_direction' : 18,
+                      'dust'           : 49,
+                      'seeing'         : 61,
+                      'precipitation'  : 27,
+                     }
+
+
+        # ##########  COMPUTATION  ##########
+        # ##### READ #####
+        try:
+            values = self._fetch(data_url, post=True).split()  # Same request as seeing.js
+        except Exception:  # Unreachable station: empty result
+            return result
+
+        readings = {key: self._feed_number(values, index) for key, index in positions.items()}  # None if missing or not numeric
+
+
+        # ##### NORMALIZATION #####
+        if readings['temperature'] is not None:
+            result['temperature'] = f"{readings['temperature']:.1f} °C"
+
+        if readings['humidity'] is not None:
+            result['humidity'] = f"{readings['humidity']:.1f} %"
+
+        if readings['wind_speed'] is not None:
+            result['wind_speed'] = f"{readings['wind_speed']:.1f} m/s"
+
+        if readings['wind_direction'] is not None:
+            result['wind_direction'] = self._compass(readings['wind_direction'])
+
+        if readings['dust'] is not None:  # None also for 'wet' (the monitor cannot measure)
+            result['dust'] = f"{readings['dust']:.1f} µg/m³"
+
+        if readings['precipitation'] is not None:
+            result['precipitation'] = f"{readings['precipitation']:.1f} mm"
+
+        if readings['seeing'] is not None and 0 < readings['seeing'] < 10:
+            result['seeing'] = f"{readings['seeing']:.2f}\""
+
+        result['ok'] = any(result[key] != "-" for key in positions)  # At least one field read
+
+
+        # ##########  OUTPUT  ##########
+        return result
 
 
 

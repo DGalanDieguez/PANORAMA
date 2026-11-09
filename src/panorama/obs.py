@@ -1137,7 +1137,8 @@ def night_info(
                     cannot be computed).
 
                 - 'sunset' : str | None
-                    Sunset (upper limb, with refraction), as
+                    Sunset (upper limb on the visible horizon, with
+                    refraction and the dip of the horizon; see Notes), as
                     'YYYY-MM-DD HH:MM:SS' UTC, or None if it does not occur.
 
                 - 'civil_evening' : str | None
@@ -1169,7 +1170,8 @@ def night_info(
                     'YYYY-MM-DD HH:MM:SS' UTC, or None if it does not occur.
 
                 - 'sunrise' : str | None
-                    Sunrise (upper limb, with refraction), as
+                    Sunrise (upper limb on the visible horizon, with
+                    refraction and the dip of the horizon; see Notes), as
                     'YYYY-MM-DD HH:MM:SS' UTC, or None if it does not occur.
 
                 - 'night_hours' : float
@@ -1235,9 +1237,31 @@ def night_info(
                     }
 
         2. DEFINITIONS
-            - Sunset and sunrise use a horizon of -0.833 deg (solar radius
-              plus standard refraction). Twilights use the geometric
-              position of the Sun's center.
+            - Sunset and sunrise take place with the Sun's center at
+              -(0.833 + 0.0293 sqrt(h)) deg, with h the elevation of the
+              observatory in meters (e.g. -2.27 deg at the ORM): -0.833 deg
+              is the sea-level sunset (solar semidiameter plus standard
+              refraction), and 0.0293 sqrt(h) deg (1.76' sqrt(h)) is the dip
+              of the visible horizon seen from that elevation. Sunset is
+              therefore later, and sunrise earlier, than at sea level (about
+              7 min at 2400 m). The same definition is used by BinarAlt.
+
+            - The dip of the horizon is not applied to the civil, nautical
+              and astronomical twilights (Sun's center at -6, -12 and
+              -18 deg, geometric altitude). Sunset and sunrise mark when the
+              solar disk is visible above the observer's horizon, which
+              depends on the line of sight from the observatory; the
+              twilights measure how much scattered sunlight is left in the
+              sky above the observer, which depends on how deep the Sun is
+              below the local horizontal plane, not on the visible horizon
+              (an elevation of a few km is negligible against the height of
+              the scattering layers of the atmosphere). The twilights, and
+              therefore the dark time, keep their standard definition.
+
+            - The dip assumes an unobstructed horizon down to the sea (or a
+              flat plain), as at the ORM and the OT. Where mountains raise
+              the local horizon (e.g. CAHA, OHP), the real sunset can be
+              earlier and the real sunrise later than computed.
 
             - The night is the one that starts in the evening of 'night'
               (local date) and ends the next morning: its local midnight is
@@ -1272,7 +1296,7 @@ def night_info(
 
 
     # ##### PANORAMA #####
-    from .support.obs.obs_support import _check_night, _event_hours, _event_iso, _event_within, _get_observer, _is_event, _mean_midnight, _solar_midnight
+    from .support.obs.obs_support import _check_night, _event_hours, _event_iso, _event_within, _get_observer, _is_event, _mean_midnight, _solar_midnight, _sun_horizon
 
 
     # ####################  INPUTS VALIDATION  ####################
@@ -1312,8 +1336,9 @@ def night_info(
 
 
     # ##########  SUN  ##########
-    sunset  = observatory_obs.sun_set_time(midnight, which="previous", horizon=-0.8333 * u.deg)  # Upper limb + refraction
-    sunrise = observatory_obs.sun_rise_time(midnight, which="next", horizon=-0.8333 * u.deg)
+    sun_horizon = _sun_horizon(observatory_obs)  # -(0.833 + dip of the horizon) deg, from the elevation (see Notes)
+    sunset      = observatory_obs.sun_set_time(midnight, which="previous", horizon=sun_horizon)
+    sunrise     = observatory_obs.sun_rise_time(midnight, which="next", horizon=sun_horizon)
     civil_e = observatory_obs.twilight_evening_civil(midnight, which="previous")  # Sun at -6 deg; masked if it does not occur
     civil_m = observatory_obs.twilight_morning_civil(midnight, which="next")
     naut_e  = observatory_obs.twilight_evening_nautical(midnight, which="previous")  # Sun at -12 deg
@@ -1569,10 +1594,19 @@ def visibility(
                     }
 
         3. NIGHT
-            - The grid runs from sunset to sunrise (Sun at -0.833 deg)
-              around the local midnight of the night starting on 'night'.
-              Where the Sun does not set or rise (polar day or night), it
-              covers ±12 h around midnight.
+            - The grid runs from sunset to sunrise around the local midnight
+              of the night starting on 'night'. Where the Sun does not set or
+              rise (polar day or night), it covers ±12 h around midnight.
+
+            - Sunset and sunrise take place with the Sun's center at
+              -(0.833 + 0.0293 sqrt(h)) deg, with h the elevation of the
+              observatory in meters: the sea-level sunset (-0.833 deg, solar
+              semidiameter plus standard refraction) plus the dip of the
+              visible horizon seen from that elevation (e.g. -2.27 deg at the
+              ORM). The dip is not applied to the twilights (-6, -12 and
+              -18 deg), which depend on the depth of the Sun below the local
+              horizontal plane, not on the visible horizon. See the Notes of
+              'night_info'.
 
             - The local midnight is searched around the mean local midnight
               (00:00 UTC of the next day minus longitude / 15 h), which
@@ -1628,7 +1662,7 @@ def visibility(
 
 
     # ##### PANORAMA #####
-    from .support.obs.obs_support import _check_bool, _check_min_alt, _check_night, _coord, _event_minute, _format_hhmm, _get_observer, _is_event, _mean_midnight, _observable, _solar_midnight
+    from .support.obs.obs_support import _check_bool, _check_min_alt, _check_night, _coord, _event_minute, _format_hhmm, _get_observer, _is_event, _mean_midnight, _observable, _solar_midnight, _sun_horizon
 
 
     # ####################  INPUTS VALIDATION  ####################
@@ -1673,8 +1707,9 @@ def visibility(
     # ##########  NIGHT LIMITS  ##########
     midnight = _solar_midnight(observatory_obs, _mean_midnight(observatory_obs, night_str))  # True solar midnight (Sun at lower culmination) of the night starting on 'night_str'
 
-    sunset  = observatory_obs.sun_set_time(midnight, which="previous", horizon=-0.8333 * u.deg)  # Upper limb + refraction
-    sunrise = observatory_obs.sun_rise_time(midnight, which="next", horizon=-0.8333 * u.deg)
+    sun_horizon = _sun_horizon(observatory_obs)  # -(0.833 + dip of the horizon) deg, from the elevation (see Notes)
+    sunset      = observatory_obs.sun_set_time(midnight, which="previous", horizon=sun_horizon)
+    sunrise     = observatory_obs.sun_rise_time(midnight, which="next", horizon=sun_horizon)
     if _is_event(sunset) and _is_event(sunrise):
         grid_start, grid_end = sunset, sunrise
     else:  # Polar day or night: fall back to ±12 h around midnight

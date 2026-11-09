@@ -172,6 +172,7 @@ Some notebooks need extra resources, such as internet access; the examples that 
 
 | Version | Date | Title | Description |
 |---|---|---|---|
+| [`v1.2.2`](#715-v122--calar-alto-weather-and-horizon-dip) | 2026-11-09 | Calar Alto Weather and Horizon Dip | Live weather and seeing of the Calar Alto Observatory in BinarAlt, sunset and sunrise with the dip of the horizon at the elevation of the observatory, and BinarAlt exposures scheduled in dark time by default. |
 | [`v1.2.1`](#714-v121--spamms-grid-check-outputs) | 2026-10-29 | SPAMMS Grid Check Outputs | New output files and figure of `needed_models`, BSTAR2006 models at 28000 K in the TLUSTY catalog, SPAMMS run on every allocated core and subgrid tags in `rename_tars`. |
 | [`v1.2.0`](#713-v120--prismas-module) | 2026-10-26 | PRISMAS Module | New `prismas` module: model-atmosphere selection, SPAMMS grid checks and renaming of PRISMAS archives. |
 | [`v1.0.1`](#712-v101--binaralt-weather-alarms) | 2026-10-24 | BinarAlt Weather Alarms | Weather-limit alarms in BinarAlt, bug fixes and updated user guide. |
@@ -239,6 +240,23 @@ Other changes:
 * `prismas` README and demo notebook updated to the new file names, keys, catalog and subgrid tags; the demo now runs the SPAMMS grid check with a *mock* SPAMMS script when no SPAMMS installation is available.
 * Module READMEs: **Inputs:** label before the parameter table of every function.
 * `tex` demo: expected query warnings captured and printed without internal paths.
+
+
+### 7.1.5. v1.2.2 — Calar Alto Weather and Horizon Dip
+*Released on 2026-11-09.*
+
+Changes in the `obs` module (`night_info`, `visibility`):
+* Sunset and sunrise now take into account the dip of the horizon at the elevation *h* of the observatory: the center of the Sun is at −(0.833 + 0.0293 √*h*)° (*h* in meters), instead of −0.833° (sea level). At the ORM and the OT (*h* ≈ 2400 m) the Sun sets at −2.27°, about 7 min later than before, and rises about 7 min earlier, so `'sunset'`, `'sunrise'` and `'night_hours'` (and the time grid of `visibility`, which runs from sunset to sunrise) change accordingly. 
+* The twilights (−6°, −12° and −18°), the dark time and the observable windows and hours of the targets are not changed: the twilights depend on the depth of the Sun below the local horizontal plane, not on the visible horizon (see the *Notes* of `night_info`).
+
+Changes in the `obs` module (`binaralt`):
+* Live weather for the Calar Alto Observatory (`"CAHA"`): temperature, humidity, wind speed and direction, rain and dust from the automatic weather station, and the seeing of the RoboDIMM monitor, read from the data of the [Seeing and Extinction Monitor](https://www.caha.es/instruments/seeing-and-extinction-monitor) page. The weather limits, box alerts and alarm also apply to it.
+* Every weather reading is shown with its unit (the GTC temperature now uses the degree sign, °C), and the precipitation is always shown as `True` or `False`, whether the station gives a yes/no state or a rain amount (`False` only for an amount of 0, e.g. `0.0 mm`).
+* The default *Sunset / Sunrise altitude* is computed from the elevation of the selected observatory, with the same definition as `night_info` (e.g., −2.27° at the ORM and the OT), and recomputed when the observatory or its elevation changes.
+* Exposures are scheduled by default in dark time, between the evening and morning astronomical twilights (formerly between sunset and sunrise), the same criterion as the observable time of `panorama.obs`.
+
+Other changes:
+* `obs` README and BinarAlt user guide ([`READMEs/BinarAlt_UserGuide.pdf`](READMEs/BinarAlt_UserGuide.pdf)) updated with the Calar Alto weather station, the new definition of sunset and sunrise and the new scheduling defaults.
 
 ---
 <br>

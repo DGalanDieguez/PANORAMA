@@ -729,11 +729,20 @@
         </div>
         <!-- Sun-altitude thresholds (geometric altitude of the Sun's center)
              that define sunset/sunrise and the twilights; see nightWindow().
-             -0.833° is the standard sunset/sunrise (34' of refraction plus
-             the 16' solar semidiameter); -18° is astronomical twilight. -->
+             Sunset/sunrise default to -(0.833 + 0.0293 sqrt(h))°, with h the
+             elevation of the observatory in m (see sunHorizonAltitude()):
+             the sea-level sunset (34' of refraction plus the 16' solar
+             semidiameter) plus the dip of the visible horizon. They are
+             recomputed when the observatory or its elevation changes, and
+             can be edited by hand. The value="-2.266" below is only the
+             initial content of the fields, that of the default observatory
+             (OT, 2390 m): on loading, applyDefaultState() replaces it with
+             the value computed for the selected observatory, and a restored
+             session with its own saved values. -18° is astronomical
+             twilight. -->
         <div class="row field">
-          <div><label for="inp-sunset-alt">Sunset altitude [°]</label><input type="number" id="inp-sunset-alt" step="any" value="-0.833"></div>
-          <div><label for="inp-sunrise-alt">Sunrise altitude [°]</label><input type="number" id="inp-sunrise-alt" step="any" value="-0.833"></div>
+          <div><label for="inp-sunset-alt">Sunset altitude [°]</label><input type="number" id="inp-sunset-alt" step="any" value="-2.266"></div>
+          <div><label for="inp-sunrise-alt">Sunrise altitude [°]</label><input type="number" id="inp-sunrise-alt" step="any" value="-2.266"></div>
         </div>
         <div class="row field">
           <div><label for="inp-twieve-alt">Evening twilight altitude [°]</label><input type="number" id="inp-twieve-alt" step="any" value="-18"></div>
@@ -742,8 +751,8 @@
         <div class="field">
           <label for="inp-sched-start">Start counting observation time from</label>
           <select id="inp-sched-start">
-            <option value="sunset" selected>Sunset</option>
-            <option value="twilight">Evening twilight</option>
+            <option value="sunset">Sunset</option>
+            <option value="twilight" selected>Evening twilight</option>
             <option value="custom">Custom time (UT)…</option>
           </select>
         </div>
@@ -754,8 +763,8 @@
         <div class="field">
           <label for="inp-sched-end">End counting observation time from</label>
           <select id="inp-sched-end">
-            <option value="sunrise" selected>Sunrise</option>
-            <option value="twilight">Morning twilight</option>
+            <option value="sunrise">Sunrise</option>
+            <option value="twilight" selected>Morning twilight</option>
             <option value="custom">Custom time (UT)…</option>
           </select>
         </div>
@@ -886,7 +895,7 @@
         </span>
       </div>
       <div class="box-body">
-        <!-- Station selector for OT and ORM (see WEATHER_STATIONS); hidden
+        <!-- Station selector for OT, ORM and CAHA (see WEATHER_STATIONS); hidden
              for every other observatory, which has no weather source. -->
         <div class="field" id="weather-station-field">
           <label for="inp-weather-station">Station</label>
@@ -1250,7 +1259,7 @@ function targetDash(index) {
 // BinarAlt and the Python functions give the same ephemerides. Keep both
 // lists in sync when editing either of them. The time zone drives the
 // "Observatory time" clock (with daylight saving time). Live weather is only
-// available for OT and ORM (see WEATHER_STATIONS).
+// available for OT, ORM and CAHA (see WEATHER_STATIONS).
 const OBSERVATORY_PRESETS = {
   OT:       { name: 'Observatorio del Teide (OT)',                         lat: 28.30000000,  lon: -16.50972222,  elev: 2390, tz: 'Atlantic/Canary' },
   ORM:      { name: 'Observatorio del Roque de los Muchachos (ORM)',       lat: 28.75611100,  lon: -17.89166700,  elev: 2396, tz: 'Atlantic/Canary' },
@@ -1654,11 +1663,11 @@ function localNoonUTC(dateVal, lonDeg) {
 // local noon of the planning date, see localNoonUTC()).
 // sunsetAlt/sunriseAlt/twiEveAlt/twiMornAlt are the Sun-altitude thresholds
 // (degrees) that define each event, read from the SCHEDULER settings — all
-// four via Astronomy.SearchAltitude so any of them can be moved (e.g. sunset
-// at -0.5° instead of the standard -0.833°, or twilight at -12° instead of
-// -18°) instead of being hard-coded. SearchAltitude uses the geometric
-// altitude of the center of the Sun (no refraction), as panorama.obs, so the
-// defaults (-0.833° for sunset/sunrise, -18° for the twilights) give the same
+// four via Astronomy.SearchAltitude so any of them can be moved (e.g.
+// twilight at -12° instead of -18°) instead of being hard-coded.
+// SearchAltitude uses the geometric altitude of the center of the Sun (no
+// refraction), as panorama.obs, so the defaults (sunset/sunrise at
+// sunHorizonAltitude() of the observatory, twilights at -18°) give the same
 // times as night_info and visibility to a few seconds.
 // The twilights are kept only if they fall within the night (between sunset
 // and sunrise): where the Sun never reaches the twilight altitude (e.g. no
@@ -2106,6 +2115,33 @@ function getObservatoryConfig() {
   }
   return OBSERVATORY_PRESETS[sel];
 }
+// Altitude of the Sun's center (deg) at sunset and sunrise seen from an
+// elevation of `elevM` meters, the same definition as _sun_horizon() in
+// obs_support.py: -0.833° (sea-level sunset: 16' solar semidiameter plus
+// 34' of refraction) minus the dip of the visible horizon, 0.0293° sqrt(h)
+// (1.76' sqrt(h), with the standard terrestrial refraction). E.g. -2.268° at
+// 2396 m (ORM): the Sun is seen to set ~7 min later than at sea level.
+// The dip is NOT applied to the twilights: they depend on how deep the Sun is
+// below the local horizontal plane (scattered light left in the sky), not on
+// the visible horizon. It assumes an unobstructed horizon (sea or plain);
+// mountains around the site make the real sunset earlier.
+function sunHorizonAltitude(elevM) {
+  const h = Number.isFinite(elevM) ? Math.max(elevM, 0) : 0;  // No dip below sea level
+  return -(0.8333 + 0.0293 * Math.sqrt(h));
+}
+// Sets the Sunset/Sunrise altitude fields from the elevation of the selected
+// observatory. Called on a fresh start and whenever the observatory or the
+// custom elevation changes, so a value edited by hand is replaced then; a
+// restored session keeps its own saved values.
+function applySunHorizonDefault() {
+  const cfg = getObservatoryConfig();
+  const alt = sunHorizonAltitude(cfg ? cfg.elev : NaN).toFixed(3);
+  document.getElementById('inp-sunset-alt').value = alt;
+  document.getElementById('inp-sunrise-alt').value = alt;
+}
+document.getElementById('obs-elev').addEventListener('change', () => {
+  if (document.getElementById('inp-observatory').value === 'custom') applySunHorizonDefault();
+});
 // "Max rows" of OBSERVATION PLAN/LOGBOOK (see getMaxRowsObs()); TARGETS and
 // LOG follow its new height.
 document.getElementById('inp-max-rows-obs').addEventListener('change', () => {
@@ -2123,6 +2159,7 @@ document.getElementById('inp-max-rows-gantt').addEventListener('change', () => {
 // The custom-observatory fields are shown only for "Custom…".
 document.getElementById('inp-observatory').addEventListener('change', (e) => {
   document.getElementById('custom-obs-fields').classList.toggle('hidden', e.target.value !== 'custom');
+  applySunHorizonDefault();  // Sunset/sunrise altitude of the new site (dip of its horizon)
   updateWeatherPanel();
 });
 
@@ -2150,6 +2187,11 @@ document.getElementById('inp-sched-end').addEventListener('change', (e) => {
 const WEATHER_STATIONS = {
   OT: [['song', 'SONG'], ['stella', 'STELLA'], ['speculoos', 'SPECULOOS']],
   ORM: [['not', 'NOT'], ['tng', 'TNG'], ['gtc', 'GTC'], ['int', 'INT'], ['magic', 'MAGIC'], ['liverpool', 'Liverpool Telescope']],
+  // CAHA automatic weather station and RoboDIMM seeing monitor, both read
+  // from the data of the "Seeing and Extinction Monitor" page (see
+  // _fetch_caha() in obs_support.py). When its dust monitor cannot measure
+  // (high humidity), the dust is shown as '-'
+  CAHA: [['caha', 'CAHA']],
 };
 // Rebuilds the station <option>s for the selected observatory, keeping the
 // previous station if it is still valid. Must run before setting the
@@ -2478,13 +2520,10 @@ async function fetchWeatherNow(force) {
   const precipNum = parseFloat(precipRaw);
   const isDryLike = precipLower === 'dry' || precipLower === 'clear' || precipLower === 'false';
   const isPrecipSafe = isDryLike || (Number.isFinite(precipNum) && precipNum === 0);
-  // A yes/no indicator is worded differently by each station (DRY, Clear,
-  // Wet, True/False, "raining"...): it is shown as "False"/"True". A numeric
-  // amount is shown as reported (value and unit).
-  let precipDisplay = data.precipitation || '-';
-  if (hasPrecipReading && !Number.isFinite(precipNum)) {
-    precipDisplay = isDryLike ? 'False' : 'True';
-  }
+  // Always shown as "False" (dry) or "True" (precipitation), whatever the
+  // station reports: a yes/no state worded in its own way (DRY, Clear, Wet,
+  // True/False...) or an amount (e.g. "0.0 mm" -> False, "0.2 mm" -> True)
+  const precipDisplay = hasPrecipReading ? (isPrecipSafe ? 'False' : 'True') : '-';
   const precipLevel = hasPrecipReading && !isPrecipSafe ? 3 : 0;
   setWeatherField('weather-precipitation', precipDisplay, precipLevel);
   logWeatherThresholdChange('Precipitation', 'precipitation', precipLevel, precipDisplay, 'none detected');
@@ -4716,14 +4755,15 @@ function applyDefaultState() {
 
   document.getElementById('inp-min-alt').value = '30';
   document.getElementById('inp-overhead').value = '10';
-  document.getElementById('inp-sunset-alt').value = '-0.833';
-  document.getElementById('inp-sunrise-alt').value = '-0.833';
+  applySunHorizonDefault();  // From the elevation of OT (see sunHorizonAltitude())
   document.getElementById('inp-twieve-alt').value = '-18';
   document.getElementById('inp-twimorn-alt').value = '-18';
-  document.getElementById('inp-sched-start').value = 'sunset';
+  // Exposures are scheduled in dark time by default (between the
+  // astronomical twilights), as the observable time of panorama.obs
+  document.getElementById('inp-sched-start').value = 'twilight';
   document.getElementById('inp-sched-start-time').value = '22:00';
   document.getElementById('sched-start-custom').classList.add('hidden');
-  document.getElementById('inp-sched-end').value = 'sunrise';
+  document.getElementById('inp-sched-end').value = 'twilight';
   document.getElementById('inp-sched-end-time').value = '05:00';
   document.getElementById('sched-end-custom').classList.add('hidden');
 
